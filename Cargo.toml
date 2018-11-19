@@ -1,0 +1,6 @@
+[package]
+name = "when"
+version = "0.1.0"
+authors = ["risboo6909 <risboo6909@yandex-team.ru>"]
+
+[dependencies]
