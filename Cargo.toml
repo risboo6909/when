@@ -3,4 +3,11 @@ name = "when"
 version = "0.1.0"
 authors = ["risboo6909 <risboo6909@yandex-team.ru>"]
 
+[workspace]
+members = [
+    "rules",
+]
+
 [dependencies]
+fst-regex = "0.2"
+fst-levenshtein = "0.2"
