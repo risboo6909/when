@@ -5,3 +5,6 @@ authors = ["risboo6909 <ttyv00@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+fst-regex = "0.2"
+fst-levenshtein = "0.2"
+chrono = "0.4"
