@@ -1,4 +1,5 @@
-struct Parser {
+pub struct Parser {
+
 }
 
 impl Parser {
@@ -6,8 +7,16 @@ impl Parser {
         Parser {}
     }
 
-    pub fn add_rule(&mut self) -> self {
+    pub fn add_rule(&mut self) -> &mut Self {
         self
     }
+}
 
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn create_parser() {
+
+    }
 }
