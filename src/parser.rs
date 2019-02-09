@@ -7,9 +7,14 @@ impl Parser {
         Parser {}
     }
 
-    pub fn add_rule(&mut self) -> &mut Self {
+    pub fn set_lang(&mut self) -> &mut Self {
         self
     }
+
+    pub fn tokenize(&mut self) -> &mut Self {
+        self
+    }
+
 }
 
 

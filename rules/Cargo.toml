@@ -4,7 +4,10 @@ version = "0.1.0"
 authors = ["risboo6909 <ttyv00@gmail.com>"]
 edition = "2018"
 
+[dependencies.nom]
+version = "4.2"
+features = ["regexp"]
+
 [dependencies]
-fst-regex = "0.2"
-fst-levenshtein = "0.2"
 chrono = "0.4"
+strsim = "0.8.0"
