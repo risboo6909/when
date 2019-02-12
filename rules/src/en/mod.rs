@@ -1,4 +1,5 @@
-pub(crate) mod weekdays;
+mod weekdays;
+mod adjectives;
 
 struct En {
     max_error: usize,
