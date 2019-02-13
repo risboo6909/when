@@ -1,4 +1,4 @@
-use crate::{recognize_word, Token, MatchResult};
+use crate::{recognize_word, best_fit, Token, MatchResult};
 use nom::{call, named_args, types::CompleteStr};
 
 #[derive(Debug)]
@@ -11,18 +11,11 @@ enum When {
 
 impl Token for When {}
 
-named_args!(pub this<'a>(exact_match: bool)<CompleteStr<'a>, MatchResult<'a>>,
-    call!(recognize_word, CompleteStr("this"), set!(max_dist=1, exact_match), &When::This)
-);
+make_token!(this, When::This, 1);
+make_token!(last, When::Last, 1);
+make_token!(past, When::Past, 1);
+make_token!(next, When::Next, 1);
 
-named_args!(pub last<'a>(exact_match: bool)<CompleteStr<'a>, MatchResult<'a>>,
-    call!(recognize_word, CompleteStr("last"), set!(max_dist=1, exact_match), &When::Last)
-);
-
-named_args!(pub past<'a>(exact_match: bool)<CompleteStr<'a>, MatchResult<'a>>,
-    call!(recognize_word, CompleteStr("past"), set!(max_dist=1, exact_match), &When::Past)
-);
-
-named_args!(pub next<'a>(exact_match: bool)<CompleteStr<'a>, MatchResult<'a>>,
-    call!(recognize_word, CompleteStr("next"), set!(max_dist=1, exact_match), &When::Next)
+named_args!(when_adj<'a>(exact_match: bool)<CompleteStr<'a>, MatchResult<'a>>,
+    call!(best_fit, exact_match, vec![&this, &last, &past, &next])
 );

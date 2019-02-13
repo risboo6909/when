@@ -1,19 +1,33 @@
+mod errors;
+
 use std::fmt::Debug;
 
 use strsim::damerau_levenshtein;
-use nom::{apply, named, named_args, take_while, preceded, many_till, Context, IResult, ErrorKind, types::CompleteStr};
+use nom::{apply, named, named_args, take_while, preceded, many_till, Context, IResult,
+          ErrorKind, types::CompleteStr};
+
+use self::errors::{AMBIGUOUS, UNKNOWN};
 
 macro_rules! set {
-    (max_dist = $max_dist: expr, $fuzzy_scan: expr) => (if $fuzzy_scan {Some($max_dist)} else {None});
+    (max_dist = $max_dist: expr, $exact_match: expr) => (if $exact_match {Some($max_dist)}
+        else {None});
+}
+
+macro_rules! make_token {
+    ($func_name: ident, $token: expr, $max_dist: expr) => (
+        named_args!(pub $func_name<'a>(exact_match: bool)<CompleteStr<'a>, MatchResult<'a>>,
+            call!(recognize_word, CompleteStr("$func_name"), set!(max_dist=$max_dist, exact_match), &$token)
+        );
+    );
+    ($func_name: ident, $token: expr, $repr: expr, $max_dist: expr) => (
+        named_args!(pub $func_name<'a>(exact_match: bool)<CompleteStr<'a>, MatchResult<'a>>,
+            call!(recognize_word, CompleteStr($repr), set!(max_dist=$max_dist, exact_match), &$token)
+        );
+    );
+    // TODO: Add repr with alternatives
 }
 
 mod en;
-
-const MAX_DIST: usize = 1000;
-
-// errors
-const AMBIGUOUS: u32 = 0;
-const UNKNOWN: u32 = 1;
 
 #[derive(Debug)]
 enum Common {
@@ -30,6 +44,13 @@ type MyResult<'a> = IResult<CompleteStr<'a>, MatchResult<'a>>;
 pub struct MatchResult<'a> {
     token: &'a dyn Token,
     dist: usize,
+}
+
+impl<'a> MatchResult<'a> {
+    pub(crate) fn new(token: &'a dyn Token, dist: usize) -> Self {
+        MatchResult{token, dist}
+    }
+
 }
 
 /// Trim spaces, special symbols and commas until any non-whitespace character appears
@@ -63,13 +84,13 @@ fn recognize_word<'a>(input: CompleteStr<'a>, pattern: CompleteStr<'a>, max_dist
                       token: &'a dyn Token) -> MyResult<'a> {
     if let Ok((tail, word)) = tokenize_word(input) {
         if *word == *pattern {
-            return Ok((tail, MatchResult { token, dist: 0 }));
+            return Ok((tail, MatchResult::new(token, 0)));
         }
 
         if max_dist.is_some() {
             let dist = damerau_levenshtein(*word, *pattern);
             if dist <= max_dist.unwrap() {
-                return Ok((tail, MatchResult { token, dist }));
+                return Ok((tail, MatchResult::new(token, dist)));
             }
         }
     }
@@ -83,7 +104,7 @@ fn recognize_word<'a>(input: CompleteStr<'a>, pattern: CompleteStr<'a>, max_dist
 fn best_fit<'a>(input: CompleteStr<'a>, fuzzy_scan: bool, funcs: Vec<&Fn(CompleteStr<'a>, bool) ->
                                                         MyResult<'a>>) -> MyResult<'a>
 {
-    let mut min_dist = MAX_DIST;
+    let mut min_dist = std::usize::MAX;
 
     let mut selected_token: &'a dyn Token = &Common::None;
     let mut selected_count = 0;
@@ -103,7 +124,7 @@ fn best_fit<'a>(input: CompleteStr<'a>, fuzzy_scan: bool, funcs: Vec<&Fn(Complet
     }
 
     if selected_count == 1 {
-        return Ok((selected_tail, MatchResult { token: selected_token, dist: min_dist }));
+        return Ok((selected_tail, MatchResult::new(selected_token, min_dist)));
     } else if selected_count > 1 {
         return throw_error(input, AMBIGUOUS);
     }
