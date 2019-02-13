@@ -9,7 +9,7 @@ use nom::{apply, named, named_args, take_while, preceded, many_till, Context, IR
 use self::errors::{AMBIGUOUS, UNKNOWN};
 
 macro_rules! set {
-    (max_dist = $max_dist: expr, $exact_match: expr) => (if $exact_match {Some($max_dist)}
+    (max_dist = $max_dist: expr, $exact_match: expr) => (if !$exact_match {Some($max_dist)}
         else {None});
 }
 
