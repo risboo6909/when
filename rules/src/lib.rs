@@ -1,57 +1,45 @@
 mod errors;
+mod common;
 
 use std::fmt::Debug;
 
 use strsim::damerau_levenshtein;
-use nom::{apply, named, named_args, take_while, preceded, many_till, Context, IResult,
+use nom::{apply, named, named_args, take_while, preceded, many_till, alt, Context, IResult,
           ErrorKind, types::CompleteStr};
 
 use self::errors::{AMBIGUOUS, UNKNOWN};
+use self::common::{Common, Token, MatchResult, MyResult};
 
 macro_rules! set {
     (max_dist = $max_dist: expr, $exact_match: expr) => (if !$exact_match {Some($max_dist)}
         else {None});
 }
 
-macro_rules! make_token {
-    ($func_name: ident, $token: expr, $max_dist: expr) => (
-        named_args!(pub $func_name<'a>(exact_match: bool)<CompleteStr<'a>, MatchResult<'a>>,
-            call!(recognize_word, CompleteStr("$func_name"), set!(max_dist=$max_dist, exact_match), &$token)
-        );
-    );
+macro_rules! define {
     ($func_name: ident, $token: expr, $repr: expr, $max_dist: expr) => (
         named_args!(pub $func_name<'a>(exact_match: bool)<CompleteStr<'a>, MatchResult<'a>>,
             call!(recognize_word, CompleteStr($repr), set!(max_dist=$max_dist, exact_match), &$token)
         );
     );
-    // TODO: Add repr with alternatives
+    ($func_name: ident, $([$token: expr, $repr: expr, $max_dist: expr]),*) => (
+        named_args!(pub $func_name<'a>(exact_match: bool)<CompleteStr<'a>, MatchResult<'a>>,
+            alt!(
+                $(call!(recognize_word, CompleteStr($repr), set!(max_dist=$max_dist, exact_match),
+                        &$token)) |*
+            )
+        );
+    );
+}
+
+macro_rules! combine {
+    ($func_name: ident => $($f: ident),*) => (
+        named_args!(pub $func_name<'a>(exact_match: bool)<CompleteStr<'a>, MatchResult<'a>>,
+            call!(best_fit, exact_match, vec![$(&$f),*])
+        );
+    );
 }
 
 mod en;
-
-#[derive(Debug)]
-enum Common {
-    None,
-}
-
-trait Token: Debug {}
-
-impl Token for Common {}
-
-type MyResult<'a> = IResult<CompleteStr<'a>, MatchResult<'a>>;
-
-#[derive(Debug)]
-pub struct MatchResult<'a> {
-    token: &'a dyn Token,
-    dist: usize,
-}
-
-impl<'a> MatchResult<'a> {
-    pub(crate) fn new(token: &'a dyn Token, dist: usize) -> Self {
-        MatchResult{token, dist}
-    }
-
-}
 
 /// Trim spaces, special symbols and commas until any non-whitespace character appears
 named!(ltrim<CompleteStr, CompleteStr>,
@@ -70,12 +58,15 @@ named!(tokenize_word<CompleteStr, CompleteStr>,
     preceded!(ltrim, take_while!(|c: char| c.is_alphabetic()))
 );
 
+/// This function is required to ...
+fn stub(input: CompleteStr) -> MyResult {
+    Ok((input, MatchResult::new(&Common::Stub, 0)))
+}
 
 #[inline]
 fn throw_error(input: CompleteStr, error_code: u32) -> MyResult {
     Err(nom::Err::Error(Context::Code(input, ErrorKind::Custom(error_code))))
 }
-
 
 /// Tries to recognize a word in a sentence using Domerau-Levenshtein algorithm, it is both simple
 /// enough and efficient.
@@ -101,7 +92,7 @@ fn recognize_word<'a>(input: CompleteStr<'a>, pattern: CompleteStr<'a>, max_dist
 
 /// Finds a minimal distance between an input word by applying all combinators from funcs.
 /// Each function accepts an input string and a flag which denotes whether exact match is required.
-fn best_fit<'a>(input: CompleteStr<'a>, fuzzy_scan: bool, funcs: Vec<&Fn(CompleteStr<'a>, bool) ->
+fn best_fit<'a>(input: CompleteStr<'a>, exact_match: bool, funcs: Vec<&Fn(CompleteStr<'a>, bool) ->
                                                         MyResult<'a>>) -> MyResult<'a>
 {
     let mut min_dist = std::usize::MAX;
@@ -111,7 +102,7 @@ fn best_fit<'a>(input: CompleteStr<'a>, fuzzy_scan: bool, funcs: Vec<&Fn(Complet
     let mut selected_tail = CompleteStr("");
 
     for f in funcs {
-        if let Ok((tail, MatchResult { token, dist })) = f(input, fuzzy_scan) {
+        if let Ok((tail, MatchResult { token, dist })) = f(input, exact_match) {
             if min_dist > dist {
                 selected_token = token;
                 selected_tail = tail;

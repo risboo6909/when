@@ -1,5 +1,6 @@
 mod weekdays;
 mod adjectives;
+mod nouns;
 
 struct En {
     max_error: usize,
