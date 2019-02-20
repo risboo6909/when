@@ -1,5 +1,6 @@
 mod errors;
-mod common;
+mod rule;
+mod tokens;
 
 use std::fmt::Debug;
 
@@ -8,32 +9,34 @@ use nom::{apply, named, named_args, take_while, preceded, many_till, alt, Contex
           ErrorKind, types::CompleteStr};
 
 use self::errors::{AMBIGUOUS, UNKNOWN};
-use self::common::{Common, Token, MatchResult, MyResult};
+use self::rule::{MatchResult, MyResult};
+use crate::tokens::Tokens;
 
 macro_rules! set {
-    (max_dist = $max_dist: expr, $exact_match: expr) => (if !$exact_match {Some($max_dist)}
-        else {None});
+    ( max_dist = $max_dist: expr, $exact_match: expr ) => (
+        if !$exact_match {Some($max_dist)} else {None}
+    );
 }
 
 macro_rules! define {
-    ($func_name: ident, $token: expr, $repr: expr, $max_dist: expr) => (
-        named_args!(pub $func_name<'a>(exact_match: bool)<CompleteStr<'a>, MatchResult<'a>>,
-            call!(recognize_word, CompleteStr($repr), set!(max_dist=$max_dist, exact_match), &$token)
+    ( $func_name: ident, $token: expr, $repr: expr, $max_dist: expr ) => (
+        named_args!(pub $func_name<'a>(exact_match: bool)<CompleteStr<'a>, MatchResult>,
+            call!(recognize_word, CompleteStr($repr), set!(max_dist=$max_dist, exact_match), $token)
         );
     );
-    ($func_name: ident, $([$token: expr, $repr: expr, $max_dist: expr]),*) => (
-        named_args!(pub $func_name<'a>(exact_match: bool)<CompleteStr<'a>, MatchResult<'a>>,
+    ( $func_name: ident, $([$token: expr, $repr: expr, $max_dist: expr]),* ) => (
+        named_args!(pub $func_name<'a>(exact_match: bool)<CompleteStr<'a>, MatchResult>,
             alt!(
                 $(call!(recognize_word, CompleteStr($repr), set!(max_dist=$max_dist, exact_match),
-                        &$token)) |*
+                        $token)) |*
             )
         );
     );
 }
 
 macro_rules! combine {
-    ($func_name: ident => $($f: ident),*) => (
-        named_args!(pub $func_name<'a>(exact_match: bool)<CompleteStr<'a>, MatchResult<'a>>,
+    ( $func_name: ident => $($f: ident),* ) => (
+        named_args!(pub $func_name<'a>(exact_match: bool)<CompleteStr<'a>, MatchResult>,
             call!(best_fit, exact_match, vec![$(&$f),*])
         );
     );
@@ -60,7 +63,7 @@ named!(tokenize_word<CompleteStr, CompleteStr>,
 
 /// This function is required to ...
 fn stub(input: CompleteStr) -> MyResult {
-    Ok((input, MatchResult::new(&Common::Stub, 0)))
+    Ok((input, MatchResult::new(Tokens::Stub, 0)))
 }
 
 #[inline]
@@ -72,7 +75,7 @@ fn throw_error(input: CompleteStr, error_code: u32) -> MyResult {
 /// enough and efficient.
 #[inline]
 fn recognize_word<'a>(input: CompleteStr<'a>, pattern: CompleteStr<'a>, max_dist: Option<usize>,
-                      token: &'a dyn Token) -> MyResult<'a> {
+                      token: Tokens) -> MyResult<'a> {
     if let Ok((tail, word)) = tokenize_word(input) {
         if *word == *pattern {
             return Ok((tail, MatchResult::new(token, 0)));
@@ -97,7 +100,7 @@ fn best_fit<'a>(input: CompleteStr<'a>, exact_match: bool, funcs: Vec<&Fn(Comple
 {
     let mut min_dist = std::usize::MAX;
 
-    let mut selected_token: &'a dyn Token = &Common::None;
+    let mut selected_token = Tokens::None;
     let mut selected_count = 0;
     let mut selected_tail = CompleteStr("");
 
