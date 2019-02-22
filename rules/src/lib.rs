@@ -1,20 +1,19 @@
 mod errors;
-mod rule;
+mod rules;
 mod tokens;
 
 use std::fmt::Debug;
 
 use strsim::damerau_levenshtein;
-use nom::{apply, named, named_args, take_while, preceded, many_till, alt, Context, IResult,
-          ErrorKind, types::CompleteStr};
+use nom::{named, named_args, take_while, preceded, Context, IResult, ErrorKind, types::CompleteStr};
 
 use self::errors::{AMBIGUOUS, UNKNOWN};
-use self::rule::{MatchResult, MyResult};
+use self::rules::{MatchResult, MyResult, RuleResult};
 use crate::tokens::Tokens;
 
 macro_rules! set {
     ( max_dist = $max_dist: expr, $exact_match: expr ) => (
-        if !$exact_match {Some($max_dist)} else {None}
+        if !$exact_match { Some($max_dist) } else { None }
     );
 }
 
@@ -124,5 +123,37 @@ fn best_fit<'a>(input: CompleteStr<'a>, exact_match: bool, funcs: Vec<&Fn(Comple
     }
 
     throw_error(input, UNKNOWN)
+
+}
+
+// TODO: define alias for "rules"
+pub(crate) fn apply_generic(mut input: &str, rules: Vec<impl Fn(&str, bool) -> RuleResult>,
+                            exact_match: bool) -> Vec<Vec<Tokens>> {
+
+    // empty vector of matched tokens
+    let mut matched_tokens = Vec::new();
+
+    loop {
+        let mut had_match = false;
+        for rule in &rules {
+            match rule(input, exact_match) {
+                RuleResult { tail, tokens: Some(tokens) } => {
+                    // applied rule had a match
+                    matched_tokens.push(tokens);
+                    // continue with the rest of the string
+                    input = tail;
+                    had_match = true;
+                    break;
+                }
+                RuleResult { tail: _, tokens: None } => continue,
+            }
+        }
+
+        if !had_match {
+            break;
+        }
+    }
+
+    matched_tokens
 
 }

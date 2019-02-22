@@ -1,13 +1,15 @@
-mod weekdays;
-mod adjectives;
 mod nouns;
+mod adjectives;
+mod weekdays;
 
-struct En {
-    max_error: usize,
+use crate::apply_generic;
+use crate::tokens::Tokens;
+
+pub fn apply_all(input: &str, exact_match: bool) -> Vec<Vec<Tokens>> {
+    apply_generic(input, vec![weekdays::apply], exact_match)
 }
 
-impl En {
-    fn set_max_error(&mut self, max_error: usize) {
-        self.max_error = max_error
-    }
+#[test]
+fn test_apply_rules() {
+    println!("{:?}", apply_all(" Anton you are invited to interview ths Frday or monday next week!", false));
 }

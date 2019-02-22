@@ -18,17 +18,17 @@ impl MatchResult {
 }
 
 #[derive(Debug)]
-pub struct ApplyResult<'a> {
+pub struct RuleResult<'a> {
     pub tail: &'a str,
-    pub tokens: Vec<Tokens>,
+    pub tokens: Option<Vec<Tokens>>,
 }
 
-impl<'a> ApplyResult<'a> {
+impl<'a> RuleResult<'a> {
 
     pub fn new(tail: &'a str, tokens: Vec<MatchResult>) -> Self {
 
         // remove stub tokens
-        let filtered_tokens =
+        let filtered_tokens: Vec<Tokens> =
             tokens.iter()
                   .map(|item| item.token.clone())
                   .filter(|item|
@@ -38,7 +38,11 @@ impl<'a> ApplyResult<'a> {
                     })
                   .collect();
 
-        Self { tail, tokens: filtered_tokens }
+        if filtered_tokens.len() > 0 {
+            return Self { tail, tokens: Some(filtered_tokens) };
+        }
+
+        Self { tail, tokens: None }
 
     }
 
