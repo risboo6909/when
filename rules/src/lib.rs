@@ -4,17 +4,23 @@ mod tokens;
 
 use std::fmt::Debug;
 
+use nom::{
+    named, named_args, preceded, take_while, types::CompleteStr, Context, ErrorKind, IResult,
+};
 use strsim::damerau_levenshtein;
-use nom::{named, named_args, take_while, preceded, Context, IResult, ErrorKind, types::CompleteStr};
 
-use self::errors::{AMBIGUOUS, UNKNOWN};
+use self::errors as my_errors;
 use self::rules::{MatchResult, MyResult, RuleResult};
 use crate::tokens::Tokens;
 
 macro_rules! set {
-    ( max_dist = $max_dist: expr, $exact_match: expr ) => (
-        if !$exact_match { Some($max_dist) } else { None }
-    );
+    ( max_dist = $max_dist: expr, $exact_match: expr ) => {
+        if !$exact_match && $max_dist > 0 {
+            Some($max_dist)
+        } else {
+            None
+        }
+    };
 }
 
 macro_rules! define {
@@ -67,16 +73,29 @@ fn stub(input: CompleteStr) -> MyResult {
 
 #[inline]
 fn throw_error(input: CompleteStr, error_code: u32) -> MyResult {
-    Err(nom::Err::Error(Context::Code(input, ErrorKind::Custom(error_code))))
+    Err(nom::Err::Error(Context::Code(
+        input,
+        ErrorKind::Custom(error_code),
+    )))
 }
 
 /// Tries to recognize a word in a sentence using Domerau-Levenshtein algorithm, it is both simple
 /// enough and efficient.
 #[inline]
-fn recognize_word<'a>(input: CompleteStr<'a>, pattern: CompleteStr<'a>, max_dist: Option<usize>,
-                      token: Tokens) -> MyResult<'a> {
+fn recognize_word<'a>(
+    input: CompleteStr<'a>,
+    pattern: CompleteStr<'a>,
+    max_dist: Option<usize>,
+    token: Tokens,
+) -> MyResult<'a> {
     if let Ok((tail, word)) = tokenize_word(input) {
+        if *word == "" {
+            // skip empty strings
+            return throw_error(input, my_errors::EMPTY);
+        }
+
         if *word == *pattern {
+            // check exact match first
             return Ok((tail, MatchResult::new(token, 0)));
         }
 
@@ -88,15 +107,16 @@ fn recognize_word<'a>(input: CompleteStr<'a>, pattern: CompleteStr<'a>, max_dist
         }
     }
 
-    throw_error(input, UNKNOWN)
-
+    throw_error(input, my_errors::UNKNOWN)
 }
 
 /// Finds a minimal distance between an input word by applying all combinators from funcs.
 /// Each function accepts an input string and a flag which denotes whether exact match is required.
-fn best_fit<'a>(input: CompleteStr<'a>, exact_match: bool, funcs: Vec<&Fn(CompleteStr<'a>, bool) ->
-                                                        MyResult<'a>>) -> MyResult<'a>
-{
+fn best_fit<'a>(
+    input: CompleteStr<'a>,
+    exact_match: bool,
+    funcs: Vec<&Fn(CompleteStr<'a>, bool) -> MyResult<'a>>,
+) -> MyResult<'a> {
     let mut min_dist = std::usize::MAX;
 
     let mut selected_token = Tokens::None;
@@ -119,17 +139,18 @@ fn best_fit<'a>(input: CompleteStr<'a>, exact_match: bool, funcs: Vec<&Fn(Comple
     if selected_count == 1 {
         return Ok((selected_tail, MatchResult::new(selected_token, min_dist)));
     } else if selected_count > 1 {
-        return throw_error(input, AMBIGUOUS);
+        return throw_error(input, my_errors::AMBIGUOUS);
     }
 
-    throw_error(input, UNKNOWN)
-
+    throw_error(input, my_errors::UNKNOWN)
 }
 
 // TODO: define alias for "rules"
-pub(crate) fn apply_generic(mut input: &str, rules: Vec<impl Fn(&str, bool) -> RuleResult>,
-                            exact_match: bool) -> Vec<Vec<Tokens>> {
-
+pub(crate) fn apply_generic(
+    mut input: &str,
+    rules: Vec<impl Fn(&str, bool) -> RuleResult>,
+    exact_match: bool,
+) -> Vec<Vec<Tokens>> {
     // empty vector of matched tokens
     let mut matched_tokens = Vec::new();
 
@@ -137,7 +158,10 @@ pub(crate) fn apply_generic(mut input: &str, rules: Vec<impl Fn(&str, bool) -> R
         let mut had_match = false;
         for rule in &rules {
             match rule(input, exact_match) {
-                RuleResult { tail, tokens: Some(tokens) } => {
+                RuleResult {
+                    tail,
+                    tokens: Some(tokens),
+                } => {
                     // applied rule had a match
                     matched_tokens.push(tokens);
                     // continue with the rest of the string
@@ -145,7 +169,10 @@ pub(crate) fn apply_generic(mut input: &str, rules: Vec<impl Fn(&str, bool) -> R
                     had_match = true;
                     break;
                 }
-                RuleResult { tail: _, tokens: None } => continue,
+                RuleResult {
+                    tail: _,
+                    tokens: None,
+                } => continue,
             }
         }
 
@@ -155,5 +182,4 @@ pub(crate) fn apply_generic(mut input: &str, rules: Vec<impl Fn(&str, bool) -> R
     }
 
     matched_tokens
-
 }

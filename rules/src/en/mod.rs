@@ -1,5 +1,5 @@
-mod nouns;
 mod adjectives;
+mod nouns;
 mod weekdays;
 
 use crate::apply_generic;
@@ -11,5 +11,11 @@ pub fn apply_all(input: &str, exact_match: bool) -> Vec<Vec<Tokens>> {
 
 #[test]
 fn test_apply_rules() {
-    println!("{:?}", apply_all(" Anton you are invited to interview ths Frday or monday next week!", false));
+    println!(
+        "{:?}",
+        apply_all(
+            " you are invited to interview ths frday or monday next week!",
+            false
+        )
+    );
 }

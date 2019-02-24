@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 
 use crate::tokens::Tokens;
-use nom::{IResult, types::CompleteStr};
+use nom::{types::CompleteStr, IResult};
 
 pub type MyResult<'a> = IResult<CompleteStr<'a>, MatchResult>;
 
@@ -13,7 +13,7 @@ pub struct MatchResult {
 
 impl MatchResult {
     pub(crate) fn new(token: Tokens, dist: usize) -> Self {
-        MatchResult{token, dist}
+        MatchResult { token, dist }
     }
 }
 
@@ -24,26 +24,24 @@ pub struct RuleResult<'a> {
 }
 
 impl<'a> RuleResult<'a> {
-
     pub fn new(tail: &'a str, tokens: Vec<MatchResult>) -> Self {
-
         // remove stub tokens
-        let filtered_tokens: Vec<Tokens> =
-            tokens.iter()
-                  .map(|item| item.token.clone())
-                  .filter(|item|
-                    match item {
-                        Tokens::Stub => false,
-                        _ => true,
-                    })
-                  .collect();
+        let filtered_tokens: Vec<Tokens> = tokens
+            .iter()
+            .map(|item| item.token.clone())
+            .filter(|item| match item {
+                Tokens::Stub => false,
+                _ => true,
+            })
+            .collect();
 
         if filtered_tokens.len() > 0 {
-            return Self { tail, tokens: Some(filtered_tokens) };
+            return Self {
+                tail,
+                tokens: Some(filtered_tokens),
+            };
         }
 
         Self { tail, tokens: None }
-
     }
-
 }

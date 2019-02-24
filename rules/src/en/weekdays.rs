@@ -1,31 +1,53 @@
-use crate::tokens::{Tokens, Weekday};
-use crate::{stub, recognize_word, best_fit, MatchResult, rules::RuleResult};
 use super::{adjectives::when, nouns::week_noun};
+use crate::tokens::{Tokens, Weekday};
+use crate::{best_fit, recognize_word, rules::RuleResult, stub, MatchResult};
 
-use nom::{apply, alt, call, closure, named_args, named, many_till, take, tuple, eof, IResult,
-          types::CompleteStr, recognize};
+use nom::{
+    alt, apply, call, closure, eof, many_till, named, named_args, recognize, take, tuple,
+    types::CompleteStr, IResult,
+};
 
+define!(
+    monday,
+    [Tokens::Weekday(Weekday::Monday), "monday", 1],
+    [Tokens::Weekday(Weekday::Monday), "mon", 0]
+);
 
-define!(monday, [Tokens::Weekday(Weekday::Monday), "monday", 2],
-                [Tokens::Weekday(Weekday::Monday), "mon", 0]);
+define!(
+    tuesday,
+    [Tokens::Weekday(Weekday::Tuesday), "tuesday", 1],
+    [Tokens::Weekday(Weekday::Tuesday), "tue", 0]
+);
 
-define!(tuesday, [Tokens::Weekday(Weekday::Tuesday), "tuesday", 2],
-                 [Tokens::Weekday(Weekday::Tuesday), "tue", 1]);
+define!(
+    wednesday,
+    [Tokens::Weekday(Weekday::Wednesday), "wednesday", 2],
+    [Tokens::Weekday(Weekday::Wednesday), "wed", 0]
+);
 
-define!(wednesday, [Tokens::Weekday(Weekday::Wednesday), "wednesday", 2],
-                   [Tokens::Weekday(Weekday::Wednesday), "wed", 0]);
+define!(
+    thursday,
+    [Tokens::Weekday(Weekday::Thursday), "thursday", 2],
+    [Tokens::Weekday(Weekday::Thursday), "thur", 0]
+);
 
-define!(thursday, [Tokens::Weekday(Weekday::Thursday), "thursday", 2],
-                  [Tokens::Weekday(Weekday::Thursday), "thur", 1]);
+define!(
+    friday,
+    [Tokens::Weekday(Weekday::Friday), "friday", 1],
+    [Tokens::Weekday(Weekday::Friday), "fri", 0]
+);
 
-define!(friday, [Tokens::Weekday(Weekday::Friday), "friday", 2],
-                [Tokens::Weekday(Weekday::Friday), "fri", 1]);
+define!(
+    saturday,
+    [Tokens::Weekday(Weekday::Saturday), "saturday", 2],
+    [Tokens::Weekday(Weekday::Saturday), "sat", 0]
+);
 
-define!(saturday, [Tokens::Weekday(Weekday::Saturday), "saturday", 2],
-                  [Tokens::Weekday(Weekday::Saturday), "sat", 1]);
-
-define!(sunday, [Tokens::Weekday(Weekday::Sunday), "sunday", 2],
-                [Tokens::Weekday(Weekday::Sunday), "sun", 1]);
+define!(
+    sunday,
+    [Tokens::Weekday(Weekday::Sunday), "sunday", 1],
+    [Tokens::Weekday(Weekday::Sunday), "sun", 0]
+);
 
 combine!(day_of_week => monday, tuesday, wednesday, thursday, friday, saturday, sunday);
 
@@ -47,7 +69,7 @@ named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<CompleteStr<'a>>,
 );
 
 pub(crate) fn apply(input: &str, exact_match: bool) -> RuleResult {
-    if let Ok( (tail, (_, tt)) ) = parse(CompleteStr(input), exact_match) {
+    if let Ok((tail, (_, tt))) = parse(CompleteStr(input), exact_match) {
         return RuleResult::new(*tail, vec![tt.0, tt.1, tt.2]);
     }
     RuleResult::new(input, vec![])

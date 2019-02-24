@@ -1,6 +1,4 @@
-pub struct Parser {
-
-}
+pub struct Parser {}
 
 impl Parser {
     pub fn new() -> Self {
@@ -14,14 +12,10 @@ impl Parser {
     pub fn tokenize(&mut self) -> &mut Self {
         self
     }
-
 }
-
 
 #[cfg(test)]
 mod tests {
     #[test]
-    fn create_parser() {
-
-    }
+    fn create_parser() {}
 }
