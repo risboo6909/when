@@ -10,19 +10,37 @@ use nom::{
 use strsim::damerau_levenshtein;
 
 use self::errors as my_errors;
-use self::rules::{MatchResult, MyResult, RuleResult};
+use self::rules::{MatchResult, MyResult, RuleResult, FnRule};
 use crate::tokens::Tokens;
 
 macro_rules! set {
     ( max_dist = $max_dist: expr, $exact_match: expr ) => {
-        if !$exact_match && $max_dist > 0 {
-            Some($max_dist)
+        if !$exact_match {
+            $max_dist
         } else {
-            None
+            0
         }
     };
 }
 
+/// Macro helps to simplify compound combinator definition, for example:
+///
+/// define!(
+///    saturday,
+///    [Tokens::Weekday(Weekday::Saturday), "saturday", 2],
+///    [Tokens::Weekday(Weekday::Saturday), "sat", 0]
+///  );
+///
+/// instead of clumsy
+///
+/// named_args!(saturday<'a>(exact_match: bool)<CompleteStr<'a>, MatchResult<'a>>,
+///    alt!(
+///        call!(recognize_word, CompleteStr("saturday"), set!(max_dist=2, exact_match),
+///            &Weekday::Saturday) |
+///        call!(recognize_word, CompleteStr("sat"), set!(max_dist=0, exact_match),
+///            &Weekday::Saturday)
+///    )
+/// );
 macro_rules! define {
     ( $func_name: ident, $token: expr, $repr: expr, $max_dist: expr ) => (
         named_args!(pub $func_name<'a>(exact_match: bool)<CompleteStr<'a>, MatchResult>,
@@ -39,6 +57,11 @@ macro_rules! define {
     );
 }
 
+/// Macro helps to combine tokens defined by define! macro into one, i.e.
+///
+/// combine!(day_of_week => monday, tuesday, wednesday, thursday, friday, saturday, sunday);
+///
+/// defines "day_of_week" combinator which matches any of listed combinators
 macro_rules! combine {
     ( $func_name: ident => $($f: ident),* ) => (
         named_args!(pub $func_name<'a>(exact_match: bool)<CompleteStr<'a>, MatchResult>,
@@ -72,7 +95,7 @@ fn stub(input: CompleteStr) -> MyResult {
 }
 
 #[inline]
-fn throw_error(input: CompleteStr, error_code: u32) -> MyResult {
+fn wrap_error(input: CompleteStr, error_code: u32) -> MyResult {
     Err(nom::Err::Error(Context::Code(
         input,
         ErrorKind::Custom(error_code),
@@ -85,29 +108,29 @@ fn throw_error(input: CompleteStr, error_code: u32) -> MyResult {
 fn recognize_word<'a>(
     input: CompleteStr<'a>,
     pattern: CompleteStr<'a>,
-    max_dist: Option<usize>,
+    max_dist: usize,
     token: Tokens,
 ) -> MyResult<'a> {
     if let Ok((tail, word)) = tokenize_word(input) {
         if *word == "" {
             // skip empty strings
-            return throw_error(input, my_errors::EMPTY);
+            return wrap_error(input, my_errors::EMPTY);
         }
 
-        if *word == *pattern {
-            // check exact match first
-            return Ok((tail, MatchResult::new(token, 0)));
-        }
-
-        if max_dist.is_some() {
+        if max_dist == 0 {
+            // when max_dist is 0 perform just plain string comparison
+            if *word == *pattern {
+                return Ok((tail, MatchResult::new(token, 0)));
+            }
+        } else {
             let dist = damerau_levenshtein(*word, *pattern);
-            if dist <= max_dist.unwrap() {
+            if dist <= max_dist {
                 return Ok((tail, MatchResult::new(token, dist)));
             }
         }
     }
 
-    throw_error(input, my_errors::UNKNOWN)
+    wrap_error(input, my_errors::UNKNOWN)
 }
 
 /// Finds a minimal distance between an input word by applying all combinators from funcs.
@@ -139,24 +162,33 @@ fn best_fit<'a>(
     if selected_count == 1 {
         return Ok((selected_tail, MatchResult::new(selected_token, min_dist)));
     } else if selected_count > 1 {
-        return throw_error(input, my_errors::AMBIGUOUS);
+        return wrap_error(input, my_errors::AMBIGUOUS);
     }
 
-    throw_error(input, my_errors::UNKNOWN)
+    wrap_error(input, my_errors::UNKNOWN)
 }
 
-// TODO: define alias for "rules"
+/// Generic rules applier, accepts a string to parse as its input and a slice of rules,
+/// then it tries to apply each rule from the list one by one, appending parsed tokens (if succeed)
+/// to the output vector.
+///
+/// Let's consider an example:
+///
+/// input: "You can call me this friday or next monday."
+///
+/// output will be as follows: [[When(This), Weekday(Friday)], [When(Next), Weekday(Monday)]]
 pub(crate) fn apply_generic(
     mut input: &str,
-    rules: Vec<impl Fn(&str, bool) -> RuleResult>,
+    rules: &[FnRule],
     exact_match: bool,
 ) -> Vec<Vec<Tokens>> {
+
     // empty vector of matched tokens
     let mut matched_tokens = Vec::new();
 
     loop {
         let mut had_match = false;
-        for rule in &rules {
+        for rule in rules {
             match rule(input, exact_match) {
                 RuleResult {
                     tail,
@@ -169,10 +201,7 @@ pub(crate) fn apply_generic(
                     had_match = true;
                     break;
                 }
-                RuleResult {
-                    tail: _,
-                    tokens: None,
-                } => continue,
+                _ => continue,
             }
         }
 

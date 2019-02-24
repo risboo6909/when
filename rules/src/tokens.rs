@@ -21,6 +21,7 @@ pub enum When {
 pub enum Tokens {
     None,
     Stub,
+    #[cold]
     Week,
     Weekday(Weekday),
     When(When),

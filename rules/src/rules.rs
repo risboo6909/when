@@ -23,6 +23,8 @@ pub struct RuleResult<'a> {
     pub tokens: Option<Vec<Tokens>>,
 }
 
+pub(crate) type FnRule = for<'r> fn(&'r str, bool) -> RuleResult<'r>;
+
 impl<'a> RuleResult<'a> {
     pub fn new(tail: &'a str, tokens: Vec<MatchResult>) -> Self {
         // remove stub tokens
