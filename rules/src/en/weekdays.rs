@@ -1,6 +1,7 @@
 use super::{adjectives::when, nouns::week_noun};
 use crate::tokens::{Tokens, Weekday};
-use crate::{best_fit, recognize_word, rules::RuleResult, stub, MatchResult};
+use crate::{best_fit, recognize_word, rules::RuleResult, stub, TokenDesc, match_bounds};
+use crate::rules::MatchBounds;
 
 use nom::{
     alt, apply, call, closure, eof, many_till, named, named_args, recognize, take, tuple,
@@ -52,7 +53,7 @@ define!(
 combine!(day_of_week => monday, tuesday, wednesday, thursday, friday, saturday, sunday);
 
 named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<CompleteStr<'a>>,
-                             ( MatchResult, MatchResult, MatchResult ) )>,
+                             ( TokenDesc, TokenDesc, TokenDesc ) )>,
 
     many_till!(take!(1),
         alt!(
@@ -69,10 +70,11 @@ named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<CompleteStr<'a>>,
 );
 
 pub(crate) fn apply(input: &str, exact_match: bool) -> RuleResult {
-    if let Ok((tail, (_, tt))) = parse(CompleteStr(input), exact_match) {
-        return RuleResult::new(*tail, vec![tt.0, tt.1, tt.2]);
+    if let Ok((tail, (skipped, tt))) = parse(CompleteStr(input), exact_match) {
+        let bounds = match_bounds(skipped, input, tail);
+        return RuleResult::new(*tail, vec![tt.0, tt.1, tt.2], Some(bounds));
     }
-    RuleResult::new(input, vec![])
+    RuleResult::new(input, vec![], None)
 }
 
 //#[test]

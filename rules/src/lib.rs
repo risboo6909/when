@@ -10,7 +10,7 @@ use nom::{
 use strsim::damerau_levenshtein;
 
 use self::errors as my_errors;
-use self::rules::{MatchResult, MyResult, RuleResult, FnRule};
+use self::rules::{TokenDesc, MyResult, RuleResult, FnRule, MatchBounds, MatchResult};
 use crate::tokens::Tokens;
 
 macro_rules! set {
@@ -43,12 +43,12 @@ macro_rules! set {
 /// );
 macro_rules! define {
     ( $func_name: ident, $token: expr, $repr: expr, $max_dist: expr ) => (
-        named_args!(pub $func_name<'a>(exact_match: bool)<CompleteStr<'a>, MatchResult>,
+        named_args!(pub $func_name<'a>(exact_match: bool)<CompleteStr<'a>, TokenDesc>,
             call!(recognize_word, CompleteStr($repr), set!(max_dist=$max_dist, exact_match), $token)
         );
     );
     ( $func_name: ident, $([$token: expr, $repr: expr, $max_dist: expr]),* ) => (
-        named_args!(pub $func_name<'a>(exact_match: bool)<CompleteStr<'a>, MatchResult>,
+        named_args!(pub $func_name<'a>(exact_match: bool)<CompleteStr<'a>, TokenDesc>,
             alt!(
                 $(call!(recognize_word, CompleteStr($repr), set!(max_dist=$max_dist, exact_match),
                         $token)) |*
@@ -64,7 +64,7 @@ macro_rules! define {
 /// defines "day_of_week" combinator which matches any of listed combinators
 macro_rules! combine {
     ( $func_name: ident => $($f: ident),* ) => (
-        named_args!(pub $func_name<'a>(exact_match: bool)<CompleteStr<'a>, MatchResult>,
+        named_args!(pub $func_name<'a>(exact_match: bool)<CompleteStr<'a>, TokenDesc>,
             call!(best_fit, exact_match, vec![$(&$f),*])
         );
     );
@@ -91,7 +91,7 @@ named!(tokenize_word<CompleteStr, CompleteStr>,
 
 /// This function is required to ...
 fn stub(input: CompleteStr) -> MyResult {
-    Ok((input, MatchResult::new(Tokens::Stub, 0)))
+    Ok((input, TokenDesc::new(Tokens::Stub, 0)))
 }
 
 #[inline]
@@ -120,12 +120,12 @@ fn recognize_word<'a>(
         if max_dist == 0 {
             // when max_dist is 0 perform just plain string comparison
             if *word == *pattern {
-                return Ok((tail, MatchResult::new(token, 0)));
+                return Ok((tail, TokenDesc::new(token, 0)));
             }
         } else {
             let dist = damerau_levenshtein(*word, *pattern);
             if dist <= max_dist {
-                return Ok((tail, MatchResult::new(token, dist)));
+                return Ok((tail, TokenDesc::new(token, dist)));
             }
         }
     }
@@ -147,7 +147,7 @@ fn best_fit<'a>(
     let mut selected_tail = CompleteStr("");
 
     for f in funcs {
-        if let Ok((tail, MatchResult { token, dist })) = f(input, exact_match) {
+        if let Ok((tail, TokenDesc { token, dist })) = f(input, exact_match) {
             if min_dist > dist {
                 selected_token = token;
                 selected_tail = tail;
@@ -160,7 +160,7 @@ fn best_fit<'a>(
     }
 
     if selected_count == 1 {
-        return Ok((selected_tail, MatchResult::new(selected_token, min_dist)));
+        return Ok((selected_tail, TokenDesc::new(selected_token, min_dist)));
     } else if selected_count > 1 {
         return wrap_error(input, my_errors::AMBIGUOUS);
     }
@@ -181,10 +181,11 @@ pub(crate) fn apply_generic(
     mut input: &str,
     rules: &[FnRule],
     exact_match: bool,
-) -> Vec<Vec<Tokens>> {
+) -> Vec<MatchResult> {
 
     // empty vector of matched tokens
     let mut matched_tokens = Vec::new();
+    let mut end_of_last_match_idx = 0;
 
     loop {
         let mut had_match = false;
@@ -193,12 +194,18 @@ pub(crate) fn apply_generic(
                 RuleResult {
                     tail,
                     tokens: Some(tokens),
+                    bounds: Some(bounds),
                 } => {
                     // applied rule had a match
-                    matched_tokens.push(tokens);
+                    matched_tokens.push(
+                        MatchResult::new(tokens, end_of_last_match_idx + bounds.start_idx,
+                                         end_of_last_match_idx +bounds.end_idx)
+                    );
                     // continue with the rest of the string
-                    input = tail;
                     had_match = true;
+
+                    input = tail;
+                    end_of_last_match_idx += bounds.end_idx;
                     break;
                 }
                 _ => continue,
@@ -211,4 +218,10 @@ pub(crate) fn apply_generic(
     }
 
     matched_tokens
+}
+
+#[inline]
+pub(crate) fn match_bounds(prefix: Vec<CompleteStr>, input: &str, tail: CompleteStr) -> MatchBounds {
+    // TODO: add description
+    MatchBounds::new(prefix.len() + 1, input.len() - tail.len() - 1)
 }

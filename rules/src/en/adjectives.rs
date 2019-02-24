@@ -1,5 +1,5 @@
 use crate::tokens::{Tokens, When};
-use crate::{best_fit, recognize_word, MatchResult};
+use crate::{best_fit, recognize_word, TokenDesc};
 use nom::{call, named_args, types::CompleteStr};
 
 define!(this, Tokens::When(When::This), "this", 1);
