@@ -6,7 +6,6 @@ edition = "2018"
 
 [dependencies.nom]
 version = "4.2"
-features = ["regexp"]
 
 [dependencies]
 chrono = "0.4"
