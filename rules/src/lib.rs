@@ -31,7 +31,7 @@ macro_rules! set {
 ///    [Tokens::Weekday(Weekday::Saturday), "sat", 0]
 ///  );
 ///
-/// instead of clumsy
+/// instead of clumsy:
 ///
 /// named_args!(saturday<'a>(exact_match: bool)<CompleteStr<'a>, MatchResult<'a>>,
 ///    alt!(
@@ -220,8 +220,21 @@ pub(crate) fn apply_generic(
     matched_tokens
 }
 
+/// Returns start and end indices of a match, accepts following arguments:
+///
+/// prefix - vector of characters before match start
+/// input - input string
+/// tail - everything that left after match
+///
+/// consider example below:
+///
+/// "I will meet you next friday evening"
+///  |----prefix----|          |--tail--|
+///  |---------------input--------------|
+///
+/// start_idx = prefix.len() + 1
+/// end_idx = input.len() - tail.len() - 1
 #[inline]
 pub(crate) fn match_bounds(prefix: Vec<CompleteStr>, input: &str, tail: CompleteStr) -> MatchBounds {
-    // TODO: add description
     MatchBounds::new(prefix.len() + 1, input.len() - tail.len() - 1)
 }

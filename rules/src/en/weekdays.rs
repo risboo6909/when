@@ -62,7 +62,7 @@ named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<CompleteStr<'a>>,
                    apply!(week_noun, exact_match)) |
             // when and then any day of week, e.g. "last friday"
             tuple!(apply!(when, exact_match), apply!(day_of_week, exact_match), call!(stub)) |
-            // nothing and then any day of week, e.g. "sunday"
+            // day of week only, e.g. "sunday", "monday", etc
             tuple!(apply!(day_of_week, exact_match), call!(stub), call!(stub))
         )
     )
