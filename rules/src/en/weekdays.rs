@@ -2,13 +2,11 @@ use time::Duration;
 use chrono::prelude::*;
 
 use crate::tokens::{Token, PToken::PToken, Weekday as Day, When};
-use crate::{best_fit, recognize_word, rules::RuleResult, stub, TokenDesc, match_bounds};
-use crate::rules::MatchBounds;
+use crate::{best_fit, recognize_word, rules::RuleResult, stub, TokenDesc, match_bounds, MatchBounds};
 use tuple::TupleElements;
 
 use nom::{
-    alt, apply, call, closure, eof, many_till, named, named_args, recognize, take, tuple,
-    types::CompleteStr, IResult,
+    alt, apply, call, many_till, named_args, take, tuple, types::CompleteStr
 };
 
 // days of week have biggest priority
@@ -83,9 +81,7 @@ named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<CompleteStr<'a>>,
 
 );
 
-fn make_time(res: &mut RuleResult) {
-    let local: DateTime<Local> = Local::now();
-
+fn make_time(res: &mut RuleResult, local: DateTime<Local>) {
     let mut ts = local.timestamp();
     let mut day = 0;
 
@@ -158,7 +154,79 @@ fn make_time(res: &mut RuleResult) {
 
 interpreter!(indices[0, 1, 2]);
 
-//#[test]
-//fn parse_monday() {
-//    println!("{:?}", apply(" sdfsd ths frday sc", false));
-//}
+#[cfg(test)]
+mod tests {
+    use chrono::prelude::*;
+    use crate::tokens::{Token, Weekday as Day, When};
+    use crate::MatchBounds;
+    use super::interpret;
+
+    fn fixed_time() -> DateTime<Local> {
+        Local.ymd(2019, 1, 1).and_hms(0, 0, 0)
+    }
+
+    #[test]
+    fn test_past_last() {
+        let mut result = interpret("do it for the past Monday", false, fixed_time());
+        assert_eq!(result.tokens, Some(vec![Token::Weekday(Day::Monday), Token::When(When::Past)]));
+        assert_eq!(result.bounds, Some(MatchBounds { start_idx: 14, end_idx: 24 }));
+        assert_eq!(result.ts, 1546203600);
+
+        result = interpret("past saturday", false, fixed_time());
+        assert_eq!(result.tokens, Some(vec![Token::Weekday(Day::Saturday), Token::When(When::Past)]));
+        assert_eq!(result.bounds, Some(MatchBounds { start_idx: 0, end_idx: 12 }));
+        assert_eq!(result.ts, 1546030800);
+
+        result = interpret("pst frday", false, fixed_time());
+        assert_eq!(result.tokens, Some(vec![Token::Weekday(Day::Friday), Token::When(When::Past)]));
+        assert_eq!(result.bounds, Some(MatchBounds { start_idx: 0, end_idx: 8 }));
+        assert_eq!(result.ts, 1545944400);
+
+        result = interpret("pat thrday", false, fixed_time());
+        assert_eq!(result.tokens, Some(vec![Token::Weekday(Day::Thursday), Token::When(When::Past)]));
+        assert_eq!(result.bounds, Some(MatchBounds { start_idx: 0, end_idx: 9 }));
+        assert_eq!(result.ts, 1545858000);
+
+        result = interpret("past wednesday", true, fixed_time());
+        assert_eq!(result.tokens, Some(vec![Token::Weekday(Day::Wednesday), Token::When(When::Past)]));
+        assert_eq!(result.bounds, Some(MatchBounds { start_idx: 0, end_idx: 13 }));
+        assert_eq!(result.ts, 1545771600);
+
+        result = interpret("past tuesday", true, fixed_time());
+        assert_eq!(result.tokens, Some(vec![Token::Weekday(Day::Tuesday), Token::When(When::Past)]));
+        assert_eq!(result.bounds, Some(MatchBounds { start_idx: 0, end_idx: 11 }));
+        assert_eq!(result.ts, 1545685200);
+
+        result = interpret("lst monday", false, fixed_time());
+        assert_eq!(result.tokens, Some(vec![Token::Weekday(Day::Monday), Token::When(When::Last)]));
+        assert_eq!(result.bounds, Some(MatchBounds { start_idx: 0, end_idx: 9 }));
+        assert_eq!(result.ts, 1546203600);
+    }
+
+    #[test]
+    fn test_next() {
+        let mut result = interpret("next monday", false, fixed_time());
+        assert_eq!(result.tokens, Some(vec![Token::Weekday(Day::Monday), Token::When(When::Next)]));
+        assert_eq!(result.bounds, Some(MatchBounds { start_idx: 0, end_idx: 10 }));
+        assert_eq!(result.ts, 1546808400);
+
+        let mut result = interpret("drop me a line at next wednesday", false, fixed_time());
+        assert_eq!(result.tokens, Some(vec![Token::Weekday(Day::Wednesday), Token::When(When::Next)]));
+        assert_eq!(result.bounds, Some(MatchBounds { start_idx: 18, end_idx: 31 }));
+        assert_eq!(result.ts, 1546376400);
+    }
+
+    #[test]
+    fn test_this() {
+        let mut result = interpret("drop me a line at this monday", false, fixed_time());
+        assert_eq!(result.tokens, Some(vec![Token::Weekday(Day::Monday), Token::When(When::This)]));
+        assert_eq!(result.bounds, Some(MatchBounds { start_idx: 18, end_idx: 28 }));
+        assert_eq!(result.ts, 1546203600);
+
+        let mut result = interpret("this friday", false, fixed_time());
+        assert_eq!(result.tokens, Some(vec![Token::Weekday(Day::Friday), Token::When(When::This)]));
+        assert_eq!(result.bounds, Some(MatchBounds { start_idx: 0, end_idx: 10 }));
+        assert_eq!(result.ts, 1546549200);
+    }
+
+}

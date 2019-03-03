@@ -1,4 +1,4 @@
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Weekday {
     Monday,
     Tuesday,
@@ -9,7 +9,7 @@ pub enum Weekday {
     Sunday,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum When {
     This,
     Last,
@@ -17,7 +17,15 @@ pub enum When {
     Next,
 }
 
-#[derive(Debug, Clone)]
+pub enum CasualDate {
+    Now,
+    Today,
+    Tonight,
+    Tomorrow,
+    Yesterday,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub enum Token {
     Week,
     Weekday(Weekday),
@@ -26,7 +34,7 @@ pub enum Token {
 
 // This enum adds priority value to token, tokens with smaller priority numbers are
 // being parsed first
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum PToken {
     None,
     Stub,

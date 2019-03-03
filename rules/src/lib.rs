@@ -3,6 +3,7 @@ mod rules;
 mod tokens;
 
 use std::fmt::Debug;
+use chrono::prelude::Local;
 
 use nom::{
     named, named_args, preceded, take_while, types::CompleteStr, Context, ErrorKind, IResult,
@@ -75,7 +76,8 @@ macro_rules! interpreter {
 
     ( indices[$($n: expr),*] ) => (
 
-            pub(crate) fn interpret(input: &str, exact_match: bool) -> RuleResult {
+            pub(crate) fn interpret(input: &str, exact_match: bool, local_time: DateTime<Local>) ->
+            RuleResult {
 
             let mut res = RuleResult::new();
 
@@ -87,7 +89,7 @@ macro_rules! interpreter {
                    .set_tokens(vec![$(tt.get($n).cloned().unwrap()),*])
                    .set_tail(*tail);
 
-                make_time(&mut res);
+                make_time(&mut res, local_time);
 
             } else {
                 res.set_tail(input);
@@ -219,7 +221,7 @@ pub(crate) fn apply_generic(
     loop {
         let mut had_match = false;
         for rule in rules {
-            match rule(input, exact_match) {
+            match rule(input, exact_match, Local::now()) {
                 RuleResult {
                     tail,
                     tokens: Some(tokens),
@@ -265,5 +267,6 @@ pub(crate) fn apply_generic(
 /// end_idx = input.len() - tail.len() - 1
 #[inline]
 pub(crate) fn match_bounds(prefix: Vec<CompleteStr>, input: &str, tail: CompleteStr) -> MatchBounds {
-    MatchBounds::new(prefix.len() + 1, input.len() - tail.len() - 1)
+    MatchBounds::new(if prefix.len() == 0 { 0 } else { prefix.len() + 1 },
+                     input.len() - tail.len() - 1)
 }

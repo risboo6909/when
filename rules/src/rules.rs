@@ -2,6 +2,7 @@ use std::fmt::Debug;
 use crate::tokens::{Token, PToken};
 
 use nom::{types::CompleteStr, IResult};
+use chrono::prelude::{DateTime, Local};
 
 pub type MyResult<'a> = IResult<CompleteStr<'a>, TokenDesc>;
 
@@ -17,7 +18,7 @@ impl TokenDesc {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct MatchBounds {
     pub start_idx: usize,
     pub end_idx: usize,
@@ -40,7 +41,7 @@ pub struct RuleResult<'a> {
     pub ts: usize,
 }
 
-pub(crate) type FnRule = for<'r> fn(&'r str, bool) -> RuleResult<'r>;
+pub(crate) type FnRule = for<'r> fn(&'r str, bool, DateTime<Local>) -> RuleResult<'r>;
 
 impl<'a> RuleResult<'a> {
 
