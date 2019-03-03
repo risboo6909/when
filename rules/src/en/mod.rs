@@ -1,13 +1,10 @@
-mod adjectives;
-mod nouns;
 mod weekdays;
 
 use crate::apply_generic;
-use crate::tokens::Tokens;
-use crate::rules::FnRule;
-use crate::rules::MatchResult;
+use crate::tokens::Token;
+use crate::rules::{FnRule, MatchResult};
 
-const rules: [FnRule; 1] = [weekdays::apply];
+const rules: [FnRule; 1] = [weekdays::interpret];
 
 pub fn parse(input: &str, exact_match: bool) -> Vec<MatchResult> {
     apply_generic(input, &rules, exact_match)
@@ -18,7 +15,7 @@ fn test_apply_rules() {
     println!(
         "{:?}",
         parse(
-            " you are invited to interview ths frday or monday next week!",
+            " you are invited to interview this saturday or friday last week!",
             false
         )
     );

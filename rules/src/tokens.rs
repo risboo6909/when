@@ -18,11 +18,17 @@ pub enum When {
 }
 
 #[derive(Debug, Clone)]
-pub enum Tokens {
-    None,
-    Stub,
-    #[cold]
+pub enum Token {
     Week,
     Weekday(Weekday),
     When(When),
+}
+
+// This enum adds priority value to token, tokens with smaller priority numbers are
+// being parsed first
+#[derive(Debug, Clone)]
+pub enum PToken {
+    None,
+    Stub,
+    PToken(Token, isize)
 }

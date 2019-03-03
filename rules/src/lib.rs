@@ -9,9 +9,9 @@ use nom::{
 };
 use strsim::damerau_levenshtein;
 
-use self::errors as my_errors;
-use self::rules::{TokenDesc, MyResult, RuleResult, FnRule, MatchBounds, MatchResult};
-use crate::tokens::Tokens;
+use crate::errors as my_errors;
+use crate::rules::{TokenDesc, MyResult, RuleResult, FnRule, MatchBounds, MatchResult};
+use crate::tokens::{Token, PToken};
 
 macro_rules! set {
     ( max_dist = $max_dist: expr, $exact_match: expr ) => {
@@ -70,6 +70,35 @@ macro_rules! combine {
     );
 }
 
+
+macro_rules! interpreter {
+
+    ( indices[$($n: expr),*] ) => (
+
+            pub(crate) fn interpret(input: &str, exact_match: bool) -> RuleResult {
+
+            let mut res = RuleResult::new();
+
+            if let Ok((tail, (skipped, tt))) = parse(CompleteStr(input), exact_match) {
+
+                let bounds = match_bounds(skipped, input, tail);
+
+                res.set_bounds(Some(bounds))
+                   .set_tokens(vec![$(tt.get($n).cloned().unwrap()),*])
+                   .set_tail(*tail);
+
+                make_time(&mut res);
+
+            } else {
+                res.set_tail(input);
+            }
+
+            res
+        }
+
+    );
+}
+
 mod en;
 
 /// Trim spaces, special symbols and commas until any non-whitespace character appears
@@ -91,7 +120,7 @@ named!(tokenize_word<CompleteStr, CompleteStr>,
 
 /// This function is required to ...
 fn stub(input: CompleteStr) -> MyResult {
-    Ok((input, TokenDesc::new(Tokens::Stub, 0)))
+    Ok((input, TokenDesc::new(PToken::Stub, 0)))
 }
 
 #[inline]
@@ -109,7 +138,7 @@ fn recognize_word<'a>(
     input: CompleteStr<'a>,
     pattern: CompleteStr<'a>,
     max_dist: usize,
-    token: Tokens,
+    token: PToken,
 ) -> MyResult<'a> {
     if let Ok((tail, word)) = tokenize_word(input) {
         if *word == "" {
@@ -142,7 +171,7 @@ fn best_fit<'a>(
 ) -> MyResult<'a> {
     let mut min_dist = std::usize::MAX;
 
-    let mut selected_token = Tokens::None;
+    let mut selected_token = PToken::None;
     let mut selected_count = 0;
     let mut selected_tail = CompleteStr("");
 
@@ -195,15 +224,15 @@ pub(crate) fn apply_generic(
                     tail,
                     tokens: Some(tokens),
                     bounds: Some(bounds),
+                    ts,
                 } => {
                     // applied rule had a match
                     matched_tokens.push(
-                        MatchResult::new(tokens, end_of_last_match_idx + bounds.start_idx,
-                                         end_of_last_match_idx +bounds.end_idx)
+                        MatchResult::new(tokens, ts, end_of_last_match_idx + bounds.start_idx,
+                                         end_of_last_match_idx + bounds.end_idx)
                     );
                     // continue with the rest of the string
                     had_match = true;
-
                     input = tail;
                     end_of_last_match_idx += bounds.end_idx;
                     break;
