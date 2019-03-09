@@ -9,7 +9,8 @@ use crate::rules::{FnRule, MatchResult};
 const rules: [FnRule; 1] = [weekdays::interpret];
 
 pub fn parse(input: &str, exact_match: bool) -> Vec<MatchResult> {
-    apply_generic(input, &rules, exact_match)
+    let input_lowered = input.to_lowercase();
+    apply_generic(&input_lowered, &rules, exact_match)
 }
 
 #[test]

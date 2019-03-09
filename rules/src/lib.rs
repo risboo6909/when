@@ -1,4 +1,5 @@
 mod errors;
+mod consts;
 mod rules;
 mod tokens;
 
@@ -152,7 +153,7 @@ named!(ltrim<CompleteStr, CompleteStr>,
 ///
 /// "  , abracadabra  " -> "abracadabra"
 named!(tokenize_word<CompleteStr, CompleteStr>,
-    preceded!(ltrim, take_while!(|c: char| c.is_alphabetic()))
+    preceded!(ltrim, take_while!(|c: char| c == '.' || c.is_alphabetic()))
 );
 
 /// Ignores whitespaces using "ltrim" and then consumes digits in a string until
@@ -165,7 +166,26 @@ named!(recognize_uint<CompleteStr, usize>,
                         |s: CompleteStr| s.parse::<usize>())
 );
 
-/// This function is required to ... TODO: finish
+/// Stub combinator should be used in situations when there are several alternatives
+/// are considered but they are differ in length, example:
+///
+/// named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<CompleteStr<'a>>,
+///                             ( TokenDesc, TokenDesc, TokenDesc ) )>,
+///     many_till!(take!(1),
+///        alt!(
+///            // day of week, when, "week", e.g. "tuesday next week"
+///            tuple!(apply!(day_of_week, exact_match), apply!(when, exact_match),
+///                   apply!(week_noun, exact_match)) |
+///            // when and then any day of week, e.g. "last friday"
+///            tuple!(apply!(when, exact_match), apply!(day_of_week, exact_match), call!(stub))
+///        )
+///    )
+///
+/// );
+///
+/// Note that the first variant expects 3 tokens to match with and the second one expects only
+/// 2 tokens, function result type is a tuple with three elements, so tuple sizes of both match
+/// arms must be the same size.
 fn stub(input: CompleteStr) -> MyResult {
     Ok((input, TokenDesc::new(crate::tokens::PToken::Stub, 0)))
 }

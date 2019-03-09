@@ -93,25 +93,25 @@ fn make_time(res: &mut RuleResult, local: DateTime<Local>, input: &str) {
         match token {
             Token::Weekday(Day::Monday) => {
                 day = 0;
-            }
+            },
             Token::Weekday(Day::Tuesday) => {
                 day = 1;
-            }
+            },
             Token::Weekday(Day::Wednesday) => {
                 day = 2;
-            }
+            },
             Token::Weekday(Day::Thursday) => {
                 day = 3;
-            }
+            },
             Token::Weekday(Day::Friday) => {
                 day = 4;
-            }
+            },
             Token::Weekday(Day::Saturday) => {
                 day = 5;
-            }
+            },
             Token::Weekday(Day::Sunday) => {
                 day = 6;
-            }
+            },
             Token::When(When::Next) => {
                 let delta = day - local.weekday() as i64;
                 if delta > 0 {
@@ -119,7 +119,7 @@ fn make_time(res: &mut RuleResult, local: DateTime<Local>, input: &str) {
                 } else {
                     offset = Duration::days(7 + delta).num_seconds();
                 }
-            }
+            },
             Token::When(When::Last) | Token::When(When::Past) => {
                 let delta = local.weekday() as i64 - day;
                 if delta > 0 {
@@ -127,7 +127,7 @@ fn make_time(res: &mut RuleResult, local: DateTime<Local>, input: &str) {
                 } else {
                     offset = -Duration::days(7 + delta).num_seconds();
                 }
-            }
+            },
             Token::When(When::This) => {
                 let weekday_i64 = local.weekday() as i64;
                 let delta = day - weekday_i64;
@@ -143,8 +143,9 @@ fn make_time(res: &mut RuleResult, local: DateTime<Local>, input: &str) {
                 } else {
                     offset = 0;
                 }
-            }
-            _ => {}
+            },
+            Token::Week => {},
+            _ => unreachable!(),
         }
     }
 
@@ -226,8 +227,8 @@ mod tests {
         assert_eq!(result.tokens, Some(vec![Token::Weekday(Day::Monday), Token::When(When::This)]));
         assert_eq!(result.time_shift, Err(AmbiguousTime
             {msg: "drop me a line at this monday".to_string()}));
-        
-        let mut result = interpret("this friday", false, fixed_time());
+
+        let result = interpret("this friday", false, fixed_time());
         assert_eq!(result.tokens, Some(vec![Token::Weekday(Day::Friday), Token::When(When::This)]));
         assert_eq!(result.bounds, Some(MatchBounds { start_idx: 0, end_idx: 10 }));
         assert_eq!(result.get_offset(), 259200);

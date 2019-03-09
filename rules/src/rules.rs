@@ -41,7 +41,7 @@ pub struct TimeShift {
     pub offset: i64,
 
     // absolute values
-    pub hour: usize,
+    pub hours: usize,
 }
 
 #[derive(Debug)]
@@ -106,7 +106,7 @@ impl<'a> RuleResult<'a> {
         for item in filtered_tokens {
             match item {
                 PToken::PToken(token, _) => tokens.push(token),
-                _ => (),
+                _ => unreachable!(),
             }
         }
 
@@ -131,6 +131,13 @@ impl<'a> RuleResult<'a> {
     pub fn get_offset(&self) -> i64 {
         match &self.time_shift {
             Ok(x) => x.offset,
+            Err(_) => 0,
+        }
+    }
+
+    pub fn get_hours(&self) -> usize {
+        match &self.time_shift {
+            Ok(x) => x.hours,
             Err(_) => 0,
         }
     }
