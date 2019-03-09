@@ -15,14 +15,13 @@ pub enum When {
     Last,
     Past,
     Next,
-}
-
-pub enum CasualDate {
     Now,
     Today,
     Tonight,
     Tomorrow,
     Yesterday,
+    AM,
+    PM,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -30,6 +29,7 @@ pub enum Token {
     Week,
     Weekday(Weekday),
     When(When),
+    Hour(usize),
 }
 
 // This enum adds priority value to token, tokens with smaller priority numbers are
@@ -38,5 +38,6 @@ pub enum Token {
 pub enum PToken {
     None,
     Stub,
+    // PToken consists of Token and priority of type isize
     PToken(Token, isize)
 }

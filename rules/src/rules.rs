@@ -1,8 +1,10 @@
 use std::fmt::Debug;
-use crate::tokens::{Token, PToken};
 
 use nom::{types::CompleteStr, IResult};
 use chrono::prelude::{DateTime, Local};
+
+use crate::tokens::{Token, PToken};
+use crate::errors::DateTimeError;
 
 pub type MyResult<'a> = IResult<CompleteStr<'a>, TokenDesc>;
 
@@ -33,12 +35,24 @@ impl MatchBounds {
     }
 }
 
+#[derive(Debug, Default, PartialEq)]
+pub struct TimeShift {
+    // relative value
+    pub offset: i64,
+
+    // absolute values
+    pub hour: usize,
+}
+
 #[derive(Debug)]
 pub struct RuleResult<'a> {
+
     pub tail: &'a str,
     pub tokens: Option<Vec<Token>>,
     pub bounds: Option<MatchBounds>,
-    pub ts: usize,
+
+    pub time_shift: Result<TimeShift, DateTimeError>,
+
 }
 
 pub(crate) type FnRule = for<'r> fn(&'r str, bool, DateTime<Local>) -> RuleResult<'r>;
@@ -51,7 +65,7 @@ impl<'a> RuleResult<'a> {
             tail: "",
             tokens: None,
             bounds: None,
-            ts: 0,
+            time_shift: Ok(Default::default()),
         }
 
     }
@@ -114,9 +128,11 @@ impl<'a> RuleResult<'a> {
         self
     }
 
-    pub fn set_time(&mut self, ts: usize) -> &mut Self {
-        self.ts = ts;
-        self
+    pub fn get_offset(&self) -> i64 {
+        match &self.time_shift {
+            Ok(x) => x.offset,
+            Err(_) => 0,
+        }
     }
 
 }
@@ -125,15 +141,17 @@ impl<'a> RuleResult<'a> {
 pub struct MatchResult {
     pub bounds: MatchBounds,
     pub tokens: Vec<Token>,
-    pub ts: usize,
+
+    pub time_shift: Result<TimeShift, DateTimeError>,
 }
 
 impl MatchResult {
-    pub fn new(tokens: Vec<Token>, ts: usize, start_idx: usize, end_idx: usize) -> Self {
+    pub fn new(tokens: Vec<Token>, time_shift:  Result<TimeShift, DateTimeError>, start_idx: usize,
+               end_idx: usize) -> Self {
         Self {
             bounds: MatchBounds::new(start_idx, end_idx),
             tokens,
-            ts,
+            time_shift,
         }
     }
 }

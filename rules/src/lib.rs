@@ -4,15 +4,17 @@ mod tokens;
 
 use std::fmt::Debug;
 use chrono::prelude::Local;
+use std::str::FromStr;
 
 use nom::{
     named, named_args, preceded, take_while, types::CompleteStr, Context, ErrorKind, IResult,
+    map_res, recognize
 };
 use strsim::damerau_levenshtein;
 
 use crate::errors as my_errors;
 use crate::rules::{TokenDesc, MyResult, RuleResult, FnRule, MatchBounds, MatchResult};
-use crate::tokens::{Token, PToken};
+
 
 macro_rules! set {
     ( max_dist = $max_dist: expr, $exact_match: expr ) => {
@@ -43,18 +45,51 @@ macro_rules! set {
 ///    )
 /// );
 macro_rules! define {
-    ( $func_name: ident, $token: expr, $repr: expr, $max_dist: expr ) => (
+    ( $func_name: ident: ($token: expr, $p: expr), $repr: expr, $max_dist: expr ) => (
         named_args!(pub $func_name<'a>(exact_match: bool)<CompleteStr<'a>, TokenDesc>,
-            call!(recognize_word, CompleteStr($repr), set!(max_dist=$max_dist, exact_match), $token)
+            call!(crate::recognize_word, CompleteStr($repr), set!(max_dist=$max_dist, exact_match),
+            crate::tokens::PToken::PToken($token, $p))
         );
     );
-    ( $func_name: ident, $([$token: expr, $repr: expr, $max_dist: expr]),* ) => (
+    ( $func_name: ident: $([($token: expr, $p: expr), $repr: expr, $max_dist: expr])|* ) => (
         named_args!(pub $func_name<'a>(exact_match: bool)<CompleteStr<'a>, TokenDesc>,
             alt!(
-                $(call!(recognize_word, CompleteStr($repr), set!(max_dist=$max_dist, exact_match),
-                        $token)) |*
+                $(call!(crate::recognize_word, CompleteStr($repr), set!(max_dist=$max_dist, exact_match),
+                        crate::tokens::PToken::PToken($token, $p))) |*
             )
         );
+    );
+}
+
+/// Macro simplifies bounded number parsers definition.
+///
+/// Examples:
+///
+/// Let's define Hour to be any number from 0 to 24:
+///
+/// define_num!(hour, (Token::Hour, 0), 0, 24);
+///
+/// Define minutes:
+///
+/// define_num!(hour, (Token::Minute, 0), 0, 60);
+macro_rules! define_num {
+    ( $func_name: ident, ($ctor: expr, $p: expr), $lower_bound: expr, $upper_bound: expr ) => (
+
+        fn $func_name(input: CompleteStr) -> crate::MyResult {
+
+            let mut err_code = crate::my_errors::UNKNOWN;
+
+            if let Ok((tail, n)) = crate::recognize_uint(input) {
+                if n >= $lower_bound && n <= $upper_bound {
+                    return Ok((tail, TokenDesc::new(crate::tokens::PToken::PToken($ctor(n), $p), 0)));
+                }
+                err_code = crate::my_errors::OUT_OF_BOUNDS;
+            }
+
+            return crate::wrap_error(input, err_code);
+
+        }
+
     );
 }
 
@@ -64,32 +99,33 @@ macro_rules! define {
 ///
 /// defines "day_of_week" combinator which matches any of listed combinators
 macro_rules! combine {
-    ( $func_name: ident => $($f: ident),* ) => (
+    ( $func_name: ident => $($f: ident) |* ) => (
         named_args!(pub $func_name<'a>(exact_match: bool)<CompleteStr<'a>, TokenDesc>,
-            call!(best_fit, exact_match, vec![$(&$f),*])
+            call!(crate::best_fit, exact_match, vec![$(&$f),*])
         );
     );
 }
 
 
-macro_rules! interpreter {
+/// TODO: add comment
+macro_rules! make_interpreter {
 
     ( indices[$($n: expr),*] ) => (
 
-            pub(crate) fn interpret(input: &str, exact_match: bool, local_time: DateTime<Local>) ->
+        pub(crate) fn interpret(input: &str, exact_match: bool, local_time: DateTime<Local>) ->
             RuleResult {
 
             let mut res = RuleResult::new();
 
             if let Ok((tail, (skipped, tt))) = parse(CompleteStr(input), exact_match) {
 
-                let bounds = match_bounds(skipped, input, tail);
+                let bounds = crate::match_bounds(skipped, input, tail);
 
                 res.set_bounds(Some(bounds))
                    .set_tokens(vec![$(tt.get($n).cloned().unwrap()),*])
                    .set_tail(*tail);
 
-                make_time(&mut res, local_time);
+                make_time(&mut res, local_time, input);
 
             } else {
                 res.set_tail(input);
@@ -97,7 +133,6 @@ macro_rules! interpreter {
 
             res
         }
-
     );
 }
 
@@ -120,9 +155,19 @@ named!(tokenize_word<CompleteStr, CompleteStr>,
     preceded!(ltrim, take_while!(|c: char| c.is_alphabetic()))
 );
 
-/// This function is required to ...
+/// Ignores whitespaces using "ltrim" and then consumes digits in a string until
+/// any non digit character appears or the string has been exhausted, and in case of success
+/// converts the number from the string representation into usize:
+///
+/// "  , 321  " -> 321
+named!(recognize_uint<CompleteStr, usize>,
+    map_res!(preceded!(ltrim, recognize!(nom::digit)),
+                        |s: CompleteStr| s.parse::<usize>())
+);
+
+/// This function is required to ... TODO: finish
 fn stub(input: CompleteStr) -> MyResult {
-    Ok((input, TokenDesc::new(PToken::Stub, 0)))
+    Ok((input, TokenDesc::new(crate::tokens::PToken::Stub, 0)))
 }
 
 #[inline]
@@ -135,13 +180,13 @@ fn wrap_error(input: CompleteStr, error_code: u32) -> MyResult {
 
 /// Tries to recognize a word in a sentence using Domerau-Levenshtein algorithm, it is both simple
 /// enough and efficient.
-#[inline]
 fn recognize_word<'a>(
     input: CompleteStr<'a>,
     pattern: CompleteStr<'a>,
     max_dist: usize,
-    token: PToken,
+    token: crate::tokens::PToken,
 ) -> MyResult<'a> {
+
     if let Ok((tail, word)) = tokenize_word(input) {
         if *word == "" {
             // skip empty strings
@@ -171,9 +216,10 @@ fn best_fit<'a>(
     exact_match: bool,
     funcs: Vec<&Fn(CompleteStr<'a>, bool) -> MyResult<'a>>,
 ) -> MyResult<'a> {
+
     let mut min_dist = std::usize::MAX;
 
-    let mut selected_token = PToken::None;
+    let mut selected_token = crate::tokens::PToken::None;
     let mut selected_count = 0;
     let mut selected_tail = CompleteStr("");
 
@@ -226,11 +272,11 @@ pub(crate) fn apply_generic(
                     tail,
                     tokens: Some(tokens),
                     bounds: Some(bounds),
-                    ts,
+                    time_shift,
                 } => {
                     // applied rule had a match
                     matched_tokens.push(
-                        MatchResult::new(tokens, ts, end_of_last_match_idx + bounds.start_idx,
+                        MatchResult::new(tokens, time_shift, end_of_last_match_idx + bounds.start_idx,
                                          end_of_last_match_idx + bounds.end_idx)
                     );
                     // continue with the rest of the string
@@ -263,10 +309,10 @@ pub(crate) fn apply_generic(
 ///  |----prefix----|          |--tail--|
 ///  |---------------input--------------|
 ///
-/// start_idx = prefix.len() + 1
+/// start_idx = prefix.len() + 1 or 0 if there is no prefix
 /// end_idx = input.len() - tail.len() - 1
 #[inline]
-pub(crate) fn match_bounds(prefix: Vec<CompleteStr>, input: &str, tail: CompleteStr) -> MatchBounds {
-    MatchBounds::new(if prefix.len() == 0 { 0 } else { prefix.len() + 1 },
-                     input.len() - tail.len() - 1)
+pub(crate) fn match_bounds(prefix: Vec<CompleteStr>, input: &str, tail: CompleteStr) -> crate::MatchBounds {
+    crate::MatchBounds::new(if prefix.len() == 0 { 0 } else { prefix.len() + 1 },
+                            input.len() - tail.len() - 1)
 }
