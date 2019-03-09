@@ -3,16 +3,12 @@ mod consts;
 mod tokens;
 pub mod rules;
 
-use std::fmt::Debug;
-use std::str::FromStr;
-
 use crate::errors as my_errors;
 use crate::rules::{TokenDesc, MyResult, RuleResult, FnRule, MatchBounds, MatchResult};
 
 use chrono::prelude::Local;
 use nom::{
-    named, named_args, preceded, take_while, types::CompleteStr, Context, ErrorKind, IResult,
-    map_res, recognize
+    named, preceded, take_while, types::CompleteStr, Context, ErrorKind, IResult, map_res, recognize
 };
 use strsim::damerau_levenshtein;
 
@@ -332,6 +328,6 @@ pub(crate) fn apply_generic(
 /// end_idx = input.len() - tail.len() - 1
 #[inline]
 pub(crate) fn match_bounds(prefix: Vec<CompleteStr>, input: &str, tail: CompleteStr) -> crate::MatchBounds {
-    crate::MatchBounds::new(if prefix.len() == 0 { 0 } else { prefix.len() + 1 },
+    crate::MatchBounds::new(if prefix.is_empty() { 0 } else { prefix.len() + 1 },
                             input.len() - tail.len() - 1)
 }

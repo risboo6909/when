@@ -1,5 +1,3 @@
-use std::fmt::Debug;
-
 use nom::{types::CompleteStr, IResult};
 use chrono::prelude::{DateTime, Local};
 
@@ -110,7 +108,7 @@ impl<'a> RuleResult<'a> {
             }
         }
 
-        if tokens.len() > 0 {
+        if !tokens.is_empty() {
             self.tokens = Some(tokens);
         }
 

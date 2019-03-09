@@ -1,4 +1,3 @@
-use time::Duration;
 use chrono::prelude::*;
 
 use crate::tokens::{Token, When};
@@ -38,7 +37,7 @@ named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<CompleteStr<'a>>,
 
 );
 
-fn make_time(res: &mut RuleResult, local: DateTime<Local>, input: &str) {
+fn make_time(res: &mut RuleResult, _local: DateTime<Local>, _input: &str) {
     let mut hrs = 0;
 
     let tokens = res.tokens.as_mut().unwrap();

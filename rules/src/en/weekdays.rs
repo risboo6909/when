@@ -2,7 +2,7 @@ use time::Duration;
 use chrono::prelude::*;
 
 use crate::tokens::{Token, Weekday as Day, When};
-use crate::{rules::{RuleResult, TimeShift}, stub, TokenDesc};
+use crate::{rules::RuleResult, TokenDesc, stub};
 use crate::errors::DateTimeError;
 use tuple::TupleElements;
 
