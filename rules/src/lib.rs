@@ -1,21 +1,20 @@
 mod errors;
 mod consts;
-mod rules;
 mod tokens;
+pub mod rules;
 
 use std::fmt::Debug;
-use chrono::prelude::Local;
 use std::str::FromStr;
 
+use crate::errors as my_errors;
+use crate::rules::{TokenDesc, MyResult, RuleResult, FnRule, MatchBounds, MatchResult};
+
+use chrono::prelude::Local;
 use nom::{
     named, named_args, preceded, take_while, types::CompleteStr, Context, ErrorKind, IResult,
     map_res, recognize
 };
 use strsim::damerau_levenshtein;
-
-use crate::errors as my_errors;
-use crate::rules::{TokenDesc, MyResult, RuleResult, FnRule, MatchBounds, MatchResult};
-
 
 macro_rules! set {
     ( max_dist = $max_dist: expr, $exact_match: expr ) => {
@@ -137,7 +136,7 @@ macro_rules! make_interpreter {
     );
 }
 
-mod en;
+pub mod en;
 
 /// Trim spaces, special symbols and commas until any non-whitespace character appears
 named!(ltrim<CompleteStr, CompleteStr>,

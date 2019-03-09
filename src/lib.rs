@@ -2,4 +2,7 @@
 //!
 //! This library is inspired by https://github.com/olebedev/when
 
-mod parser;
+pub mod parser;
+
+pub use rules::en::parse as en;
+pub use parser::Parser;

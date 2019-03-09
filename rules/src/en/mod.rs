@@ -6,7 +6,7 @@ use crate::apply_generic;
 use crate::tokens::Token;
 use crate::rules::{FnRule, MatchResult};
 
-const rules: [FnRule; 1] = [weekdays::interpret];
+const rules: [FnRule; 2] = [weekdays::interpret, hour::interpret];
 
 pub fn parse(input: &str, exact_match: bool) -> Vec<MatchResult> {
     let input_lowered = input.to_lowercase();

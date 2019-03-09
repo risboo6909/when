@@ -11,3 +11,4 @@ members = [
 
 [dependencies]
 chrono = "0.4"
+rules = { path = "rules" }
