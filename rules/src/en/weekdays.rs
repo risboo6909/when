@@ -4,7 +4,6 @@ use chrono::prelude::*;
 use crate::tokens::{Token, Weekday as Day, When, Priority};
 use crate::{rules::RuleResult, TokenDesc, Dist, stub};
 use crate::errors::DateTimeError;
-use tuple::TupleElements;
 
 use nom::{
     alt, apply, call, many_till, named_args, take, tuple, types::CompleteStr,
@@ -135,13 +134,12 @@ fn make_time(res: &mut RuleResult, local: DateTime<Local>, input: &str) {
         Token::When(When::This) => {
             let weekday_i64 = local.weekday() as i64;
             let delta = day - weekday_i64;
-
             if weekday_i64 < day {
                 offset = Duration::days(delta).num_seconds();
             } else if weekday_i64 > day {
                 // what did user mean? previous week day or this week day or next
                 // week day? we don't know!
-                res.time_shift = Err(DateTimeError::AmbiguousTime {
+                res.context = Err(DateTimeError::AmbiguousTime {
                     msg: input.to_string(),
                 });
             } else {
@@ -151,8 +149,8 @@ fn make_time(res: &mut RuleResult, local: DateTime<Local>, input: &str) {
         _ => (),
     }
 
-    if res.time_shift.is_ok() {
-        res.time_shift.as_mut().unwrap().offset = offset;
+    if res.context.is_ok() {
+        res.unwrap_ctx().duration = offset;
     }
 
 }
@@ -218,7 +216,7 @@ mod tests {
     #[test]
     fn test_this() {
         let mut result = interpret("drop me a line at this monday", false, fixed_time());
-        assert_eq!(result.time_shift, Err(AmbiguousTime
+        assert_eq!(result.context, Err(AmbiguousTime
             {msg: "drop me a line at this monday".to_string()}));
 
         let result = interpret("this friday", false, fixed_time());

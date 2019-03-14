@@ -1,9 +1,7 @@
 use chrono::prelude::*;
 
 use crate::tokens::{Adverbs, Articles, Token, TimeInterval, IntWord, When, Priority};
-use crate::{rules::RuleResult, TokenDesc, Dist, stub};
-use crate::consts;
-use tuple::TupleElements;
+use crate::{rules::RuleResult, TokenDesc, Dist, stub, consts};
 
 use nom::{
     alt, apply, call, many_till, named_args, take, tuple, types::CompleteStr
@@ -50,45 +48,45 @@ combine!(number_or_intword => int_word | number);
 
 define!(
     seconds:
-    [(Token::TimeInterval(TimeInterval::Seconds), Priority(4)), "seconds", Dist(1)] |
-    [(Token::TimeInterval(TimeInterval::Seconds), Priority(4)), "second", Dist(1)]
+    [(Token::TimeInterval(TimeInterval::Second), Priority(4)), "seconds", Dist(1)] |
+    [(Token::TimeInterval(TimeInterval::Second), Priority(4)), "second", Dist(1)]
 );
 
 define!(
     minutes:
-    [(Token::TimeInterval(TimeInterval::Minutes), Priority(4)), "minutes", Dist(1)] |
-    [(Token::TimeInterval(TimeInterval::Minutes), Priority(4)), "minute", Dist(1)] |
-    [(Token::TimeInterval(TimeInterval::Minutes), Priority(4)), "min", Dist(0)]
+    [(Token::TimeInterval(TimeInterval::Minute), Priority(4)), "minutes", Dist(1)] |
+    [(Token::TimeInterval(TimeInterval::Minute), Priority(4)), "minute", Dist(1)] |
+    [(Token::TimeInterval(TimeInterval::Minute), Priority(4)), "min", Dist(0)]
 );
 
 define!(
     hours:
-    [(Token::TimeInterval(TimeInterval::Hours), Priority(4)), "hours", Dist(1)] |
-    [(Token::TimeInterval(TimeInterval::Hours), Priority(4)), "hour", Dist(1)]
+    [(Token::TimeInterval(TimeInterval::Hour), Priority(4)), "hours", Dist(1)] |
+    [(Token::TimeInterval(TimeInterval::Hour), Priority(4)), "hour", Dist(1)]
 );
 
 define!(
     days:
-    [(Token::TimeInterval(TimeInterval::Days), Priority(4)), "days", Dist(1)] |
-    [(Token::TimeInterval(TimeInterval::Days), Priority(4)), "day", Dist(0)]
+    [(Token::TimeInterval(TimeInterval::Day), Priority(4)), "days", Dist(1)] |
+    [(Token::TimeInterval(TimeInterval::Day), Priority(4)), "day", Dist(0)]
 );
 
 define!(
     weeks:
-    [(Token::TimeInterval(TimeInterval::Weeks), Priority(4)), "weeks", Dist(1)] |
-    [(Token::TimeInterval(TimeInterval::Weeks), Priority(4)), "week", Dist(1)]
+    [(Token::TimeInterval(TimeInterval::Week), Priority(4)), "weeks", Dist(1)] |
+    [(Token::TimeInterval(TimeInterval::Week), Priority(4)), "week", Dist(1)]
 );
 
 define!(
     months:
-    [(Token::TimeInterval(TimeInterval::Months), Priority(4)), "months", Dist(1)] |
-    [(Token::TimeInterval(TimeInterval::Months), Priority(4)), "month", Dist(1)]
+    [(Token::TimeInterval(TimeInterval::Month), Priority(4)), "months", Dist(1)] |
+    [(Token::TimeInterval(TimeInterval::Month), Priority(4)), "month", Dist(1)]
 );
 
 define!(
     years:
-    [(Token::TimeInterval(TimeInterval::Years), Priority(4)), "years", Dist(1)] |
-    [(Token::TimeInterval(TimeInterval::Years), Priority(4)), "year", Dist(1)]
+    [(Token::TimeInterval(TimeInterval::Year), Priority(4)), "years", Dist(1)] |
+    [(Token::TimeInterval(TimeInterval::Year), Priority(4)), "year", Dist(1)]
 );
 
 combine!(time_interval => seconds | minutes | hours | days | weeks | months | years);
@@ -122,13 +120,8 @@ make_interpreter!(indices[0, 1, 2, 3]);
 
 fn make_time(res: &mut RuleResult, local: DateTime<Local>, input: &str) {
 
-    let mut offset: i64 = 0;
-    let mut num: i64 = 0;
-
-    // if we are here, tokens MUST be Some
-    //let tokens = res.tokens.as_mut().unwrap();
-
     let mut half = false;
+    let mut num: i64 = 0;
 
     let token = res.token_by_priority(Priority(0));
 
@@ -168,27 +161,56 @@ fn make_time(res: &mut RuleResult, local: DateTime<Local>, input: &str) {
     let token = res.token_by_priority(Priority(4));
 
     match token.unwrap_or(&Token::None) {
-        Token::TimeInterval(TimeInterval::Months) => {
-            if half {
-                offset = 14 * consts::DAY as i64;
+        Token::TimeInterval(TimeInterval::Second) => {
+            res.unwrap_ctx().duration = num;
+        },
+        Token::TimeInterval(TimeInterval::Minute) => {
+            res.unwrap_ctx().duration = if half {
+                30 * consts::SECOND as i64
             } else {
-                res.time_shift.as_mut().unwrap().month =
+                num * consts::MINUTE as i64
+            }
+        },
+        Token::TimeInterval(TimeInterval::Hour) => {
+            res.unwrap_ctx().duration = if half {
+                30 * consts::MINUTE as i64
+            } else {
+                num * consts::HOUR as i64
+            }
+        },
+        Token::TimeInterval(TimeInterval::Day) => {
+            res.unwrap_ctx().duration = if half {
+                12 * consts::HOUR as i64
+            } else {
+                num * consts::DAY as i64
+            }
+        },
+        Token::TimeInterval(TimeInterval::Week) => {
+            res.unwrap_ctx().duration = if half {
+                7 * 12 * consts::HOUR as i64
+            } else {
+                num * consts::WEEK as i64
+            }
+        },
+        Token::TimeInterval(TimeInterval::Month) => {
+            if half {
+                res.unwrap_ctx().duration = 14 * consts::DAY as i64;
+            } else {
+                res.unwrap_ctx().month =
                     ((local.month() as i64 + num) % 12) as usize;
             }
         },
-        Token::TimeInterval(TimeInterval::Years) => {
+        Token::TimeInterval(TimeInterval::Year) => {
             if half {
-                res.time_shift.as_mut().unwrap().month =
+                res.unwrap_ctx().month =
                     ((local.month() as i64 + 6) % 12) as usize;
             } else {
-                res.time_shift.as_mut().unwrap().year =
+                res.unwrap_ctx().year =
                     (local.year() as i64 + num) as usize;
             }
         },
         _ => (),
     }
-
-    res.time_shift.as_mut().unwrap().offset = offset;
 
 }
 
@@ -197,7 +219,7 @@ fn make_time(res: &mut RuleResult, local: DateTime<Local>, input: &str) {
 mod tests {
     use chrono::prelude::*;
     use crate::tokens::{Token, Weekday as Day, When};
-    use crate::MatchBounds;
+    use crate::{MatchBounds, consts};
     use super::interpret;
     use crate::errors::DateTimeError::AmbiguousTime;
 
@@ -208,11 +230,14 @@ mod tests {
 
     #[test]
     fn test_deadline() {
-        let mut result = interpret("in three months", false, fixed_time());
-        assert_eq!(result.time_shift.unwrap().month, 4);
+        let result = interpret("in three months", false, fixed_time());
+        assert_eq!(result.context.unwrap().month, 4);
 
-        let mut result = interpret("in a half year", false, fixed_time());
-        assert_eq!(result.time_shift.unwrap().month, 7);
+        let result = interpret("in a half year", false, fixed_time());
+        assert_eq!(result.context.unwrap().month, 7);
+
+        let result = interpret("in the few days", false, fixed_time());
+        assert_eq!(result.context.unwrap().duration, 3 * consts::DAY as i64);
 
     }
 }

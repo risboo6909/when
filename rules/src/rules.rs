@@ -35,9 +35,9 @@ impl MatchBounds {
 }
 
 #[derive(Debug, Default, PartialEq)]
-pub struct TimeShift {
+pub struct Context {
     // relative value
-    pub offset: i64,
+    pub duration: i64,
 
     // absolute values
     pub hour: usize,
@@ -52,7 +52,7 @@ pub struct RuleResult<'a> {
     pub tokens: Option<Vec<PToken>>,
     pub bounds: Option<MatchBounds>,
 
-    pub time_shift: Result<TimeShift, DateTimeError>,
+    pub context: Result<Context, DateTimeError>,
 
 }
 
@@ -66,7 +66,7 @@ impl<'a> RuleResult<'a> {
             tail: "",
             tokens: None,
             bounds: None,
-            time_shift: Ok(Default::default()),
+            context: Ok(Default::default()),
         }
 
     }
@@ -133,17 +133,21 @@ impl<'a> RuleResult<'a> {
     }
 
     pub fn get_offset(&self) -> i64 {
-        match &self.time_shift {
-            Ok(x) => x.offset,
+        match &self.context {
+            Ok(x) => x.duration,
             Err(_) => 0,
         }
     }
 
     pub fn get_hours(&self) -> usize {
-        match &self.time_shift {
+        match &self.context {
             Ok(x) => x.hour,
             Err(_) => 0,
         }
+    }
+
+    pub fn unwrap_ctx(&mut self) -> &mut Context {
+        self.context.as_mut().unwrap()
     }
 
 }
@@ -151,11 +155,11 @@ impl<'a> RuleResult<'a> {
 #[derive(Debug)]
 pub struct MatchResult {
     pub bounds: MatchBounds,
-    pub time_shift: Result<TimeShift, DateTimeError>,
+    pub time_shift: Result<Context, DateTimeError>,
 }
 
 impl MatchResult {
-    pub fn new(time_shift: Result<TimeShift, DateTimeError>, start_idx: usize,
+    pub fn new(time_shift: Result<Context, DateTimeError>, start_idx: usize,
                end_idx: usize) -> Self {
         Self {
             bounds: MatchBounds::new(start_idx, end_idx),

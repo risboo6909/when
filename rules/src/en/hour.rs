@@ -1,9 +1,7 @@
 use chrono::prelude::*;
 
 use crate::tokens::{Token, When, Priority};
-use crate::{rules::RuleResult, TokenDesc, Dist};
-use crate::consts::HOUR;
-use tuple::TupleElements;
+use crate::{rules::RuleResult, TokenDesc, Dist, consts};
 
 use nom::{
     alt, apply, call, many_till, named_args, take, tuple, types::CompleteStr
@@ -38,9 +36,10 @@ named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<CompleteStr<'a>>,
 );
 
 fn make_time(res: &mut RuleResult, _local: DateTime<Local>, _input: &str) {
-    let mut hrs = 0;
 
     let token = res.token_by_priority(Priority(0));
+
+    let mut hrs = 0;
 
     match token.unwrap_or(&Token::None) {
         Token::Number(n) => {
@@ -59,7 +58,7 @@ fn make_time(res: &mut RuleResult, _local: DateTime<Local>, _input: &str) {
         _ => (),
     }
 
-    res.time_shift.as_mut().unwrap().hour = hrs * HOUR;
+    res.unwrap_ctx().hour = hrs * consts::HOUR;
 
 }
 

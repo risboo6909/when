@@ -110,6 +110,8 @@ macro_rules! make_interpreter {
 
     ( indices[$($n: expr),*] ) => (
 
+        use tuple::TupleElements;
+
         pub(crate) fn interpret(input: &str, exact_match: bool, local_time: DateTime<Local>) ->
 
             RuleResult {
@@ -288,14 +290,17 @@ pub(crate) fn apply_generic(
             match rule(input, exact_match, Local::now()) {
                 RuleResult {
                     tail,
-                    tokens: _,
+                    tokens,
                     bounds: Some(bounds),
-                    time_shift,
+                    context,
                 } => {
                     // applied rule had a match
                     matched_tokens.push(
-                        MatchResult::new(time_shift, end_of_last_match_idx + bounds.start_idx,
-                                         end_of_last_match_idx + bounds.end_idx)
+                        MatchResult::new(
+                            context,
+                            end_of_last_match_idx + bounds.start_idx,
+                            end_of_last_match_idx + bounds.end_idx,
+                        )
                     );
                     // continue with the rest of the string
                     had_match = true;

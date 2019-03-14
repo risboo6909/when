@@ -44,13 +44,13 @@ pub enum IntWord {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum TimeInterval {
-    Seconds,
-    Minutes,
-    Hours,
-    Days,
-    Weeks,
-    Months,
-    Years,
+    Second,
+    Minute,
+    Hour,
+    Day,
+    Week,
+    Month,
+    Year,
 }
 
 #[derive(Debug, Clone, PartialEq)]
