@@ -5,6 +5,7 @@ pub mod rules;
 
 use crate::errors as my_errors;
 use crate::rules::{TokenDesc, MyResult, RuleResult, FnRule, MatchBounds, MatchResult};
+use crate::tokens::PToken;
 
 use chrono::prelude::Local;
 use nom::{
@@ -71,29 +72,26 @@ macro_rules! define {
 macro_rules! define_num {
     ( $func_name: ident, ($ctor: expr, $p: expr), $lower_bound: expr, $upper_bound: expr ) => (
 
-        fn $func_name(input: CompleteStr) -> crate::MyResult {
-
+        fn $func_name(input: CompleteStr, _: bool) -> crate::MyResult {
             let mut err_code = crate::my_errors::UNKNOWN;
-
             if let Ok((tail, n)) = crate::recognize_uint(input) {
                 if n >= $lower_bound && n <= $upper_bound {
                     return Ok((tail, TokenDesc::new(crate::tokens::PToken::PToken($ctor(n), $p), 0)));
                 }
                 err_code = crate::my_errors::OUT_OF_BOUNDS;
             }
-
             return crate::wrap_error(input, err_code);
-
         }
-
     );
 }
 
 /// Macro helps to combine tokens defined by define! macro into one, i.e.
 ///
-/// combine!(day_of_week => monday, tuesday, wednesday, thursday, friday, saturday, sunday);
+/// combine!(day_of_week => monday | tuesday | wednesday | thursday | friday | saturday | sunday);
 ///
-/// defines "day_of_week" combinator which matches any of listed combinators
+/// Defines "day_of_week" combinator which looks for the best match among the given variants.
+///
+/// Match considered as the best one if its Levenshtein distance is minimal compared to others.
 macro_rules! combine {
     ( $func_name: ident => $($f: ident) |* ) => (
         named_args!(pub $func_name<'a>(exact_match: bool)<CompleteStr<'a>, TokenDesc>,
@@ -109,6 +107,7 @@ macro_rules! make_interpreter {
     ( indices[$($n: expr),*] ) => (
 
         pub(crate) fn interpret(input: &str, exact_match: bool, local_time: DateTime<Local>) ->
+
             RuleResult {
 
             let mut res = RuleResult::new();
@@ -129,6 +128,7 @@ macro_rules! make_interpreter {
 
             res
         }
+
     );
 }
 
@@ -207,7 +207,6 @@ fn recognize_word<'a>(
             // skip empty strings
             return wrap_error(input, my_errors::EMPTY);
         }
-
         if max_dist == 0 {
             // when max_dist is 0 perform just plain string comparison
             if *word == *pattern {
@@ -285,13 +284,13 @@ pub(crate) fn apply_generic(
             match rule(input, exact_match, Local::now()) {
                 RuleResult {
                     tail,
-                    tokens: Some(tokens),
+                    tokens: _,
                     bounds: Some(bounds),
                     time_shift,
                 } => {
                     // applied rule had a match
                     matched_tokens.push(
-                        MatchResult::new(tokens, time_shift, end_of_last_match_idx + bounds.start_idx,
+                        MatchResult::new(time_shift, end_of_last_match_idx + bounds.start_idx,
                                          end_of_last_match_idx + bounds.end_idx)
                     );
                     // continue with the rest of the string

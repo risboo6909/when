@@ -1,6 +1,6 @@
 use chrono::prelude::*;
 
-use crate::tokens::{Token, When};
+use crate::tokens::{Token, When, Priority};
 use crate::{rules::RuleResult, TokenDesc};
 use crate::consts::HOUR;
 use tuple::TupleElements;
@@ -9,20 +9,20 @@ use nom::{
     alt, apply, call, many_till, named_args, take, tuple, types::CompleteStr
 };
 
-define_num!(hour, (Token::Hour, 0), 0, 12);
+define_num!(hour, (Token::Number, Priority(0)), 0, 12);
 
 define!(
     am:
-    [(Token::When(When::AM), 1), "a.m.", 0] |
-    [(Token::When(When::AM), 1), "a.", 0] |
-    [(Token::When(When::AM), 1), "am", 0]
+    [(Token::When(When::AM), Priority(1)), "a.m.", 0] |
+    [(Token::When(When::AM), Priority(1)), "a.", 0] |
+    [(Token::When(When::AM), Priority(1)), "am", 0]
 );
 
 define!(
     pm:
-    [(Token::When(When::PM), 1), "p.m.", 0] |
-    [(Token::When(When::PM), 1), "p.", 0] |
-    [(Token::When(When::PM), 1), "pm", 0]
+    [(Token::When(When::PM), Priority(1)), "p.m.", 0] |
+    [(Token::When(When::PM), Priority(1)), "p.", 0] |
+    [(Token::When(When::PM), Priority(1)), "pm", 0]
 );
 
 combine!(when => am | pm);
@@ -32,7 +32,7 @@ named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<CompleteStr<'a>>,
 
     many_till!(take!(1),
         // time (hours), for example 5am, 6p.m., 4a., 3 p.m.
-        tuple!(hour, apply!(when, exact_match))
+        tuple!(apply!(hour, true), apply!(when, exact_match))
     )
 
 );
@@ -40,22 +40,28 @@ named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<CompleteStr<'a>>,
 fn make_time(res: &mut RuleResult, _local: DateTime<Local>, _input: &str) {
     let mut hrs = 0;
 
-    let tokens = res.tokens.as_mut().unwrap();
+    let token = res.token_by_priority(Priority(0));
 
-    for token in tokens {
-        match token {
-            Token::Hour(n) => {
-                hrs = *n;
-            },
+    match token.unwrap_or(&Token::None) {
+        Token::Number(n) => {
+            hrs = *n;
+        },
+        _ => (),
+    }
+
+    let token = res.token_by_priority(Priority(1));
+
+    if token.is_some() {
+        match token.unwrap() {
             Token::When(When::PM) => {
                 hrs += 12;
             },
             Token::When(When::AM) => {},
-            _ => unreachable!(),
+            _ => (),
         }
     }
 
-    res.time_shift.as_mut().unwrap().hours = hrs * HOUR;
+    res.time_shift.as_mut().unwrap().hour = hrs * HOUR;
 
 }
 
@@ -75,17 +81,14 @@ mod tests {
     #[test]
     fn test_pm() {
         let mut result = interpret("5pm", false, fixed_time());
-        assert_eq!(result.tokens, Some(vec![Token::Hour(5), Token::When(When::PM)]));
         assert_eq!(result.bounds, Some(MatchBounds { start_idx: 0, end_idx: 2 }));
         assert_eq!(result.get_hours(), 61200);
 
         result = interpret("at 5 pm", false, fixed_time());
-        assert_eq!(result.tokens, Some(vec![Token::Hour(5), Token::When(When::PM)]));
         assert_eq!(result.bounds, Some(MatchBounds { start_idx: 3, end_idx: 6 }));
         assert_eq!(result.get_hours(), 61200);
 
         result = interpret("at 12 p.", false, fixed_time());
-        assert_eq!(result.tokens, Some(vec![Token::Hour(12), Token::When(When::PM)]));
         assert_eq!(result.bounds, Some(MatchBounds { start_idx: 3, end_idx: 7 }));
         assert_eq!(result.get_hours(), 86400);
     }
@@ -93,17 +96,14 @@ mod tests {
     #[test]
     fn test_am() {
         let mut result = interpret("5am", false, fixed_time());
-        assert_eq!(result.tokens, Some(vec![Token::Hour(5), Token::When(When::AM)]));
         assert_eq!(result.bounds, Some(MatchBounds { start_idx: 0, end_idx: 2 }));
         assert_eq!(result.get_hours(), 18000);
 
         result = interpret("at 5 a.m.", false, fixed_time());
-        assert_eq!(result.tokens, Some(vec![Token::Hour(5), Token::When(When::AM)]));
         assert_eq!(result.bounds, Some(MatchBounds { start_idx: 3, end_idx: 8 }));
         assert_eq!(result.get_hours(), 18000);
 
         result = interpret("at 12 a.", false, fixed_time());
-        assert_eq!(result.tokens, Some(vec![Token::Hour(12), Token::When(When::AM)]));
         assert_eq!(result.bounds, Some(MatchBounds { start_idx: 3, end_idx: 7 }));
         assert_eq!(result.get_hours(), 43200);
     }

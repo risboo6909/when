@@ -11,6 +11,8 @@ pub enum Weekday {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum When {
+    Within,
+    In,
     This,
     Last,
     Past,
@@ -25,12 +27,60 @@ pub enum When {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub enum IntWord {
+    One,
+    Two,
+    Three,
+    Four,
+    Five,
+    Six,
+    Seven,
+    Eight,
+    Nine,
+    Ten,
+    Eleven,
+    Twelve,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum TimeInterval {
+    Seconds,
+    Minutes,
+    Hours,
+    Days,
+    Weeks,
+    Months,
+    Years,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum Adverbs {
+    Half,
+    Few,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum Articles {
+    A,
+    An,
+    The,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub enum Token {
+    None,
     Week,
+    Articles(Articles),
     Weekday(Weekday),
     When(When),
-    Hour(usize),
+    Number(usize),
+    IntWord(IntWord),
+    TimeInterval(TimeInterval),
+    Adverbs(Adverbs),
 }
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Priority(pub isize);
 
 // This enum adds priority value to token, tokens with smaller priority numbers are
 // being parsed first
@@ -39,5 +89,5 @@ pub enum PToken {
     None,
     Stub,
     // PToken consists of Token and priority of type isize
-    PToken(Token, isize)
+    PToken(Token, Priority),
 }
