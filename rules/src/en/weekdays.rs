@@ -2,7 +2,7 @@ use time::Duration;
 use chrono::prelude::*;
 
 use crate::tokens::{Token, Weekday as Day, When, Priority};
-use crate::{rules::RuleResult, TokenDesc, stub};
+use crate::{rules::RuleResult, TokenDesc, Dist, stub};
 use crate::errors::DateTimeError;
 use tuple::TupleElements;
 
@@ -14,58 +14,58 @@ use nom::{
 
 define!(
     monday:
-    [(Token::Weekday(Day::Monday), Priority(0)), "monday", 1] |
-    [(Token::Weekday(Day::Monday), Priority(0)), "mon", 0]
+    [(Token::Weekday(Day::Monday), Priority(0)), "monday", Dist(1)] |
+    [(Token::Weekday(Day::Monday), Priority(0)), "mon", Dist(0)]
 );
 
 define!(
     tuesday:
-    [(Token::Weekday(Day::Tuesday), Priority(0)), "tuesday", 1] |
-    [(Token::Weekday(Day::Tuesday), Priority(0)), "tue", 0]
+    [(Token::Weekday(Day::Tuesday), Priority(0)), "tuesday", Dist(1)] |
+    [(Token::Weekday(Day::Tuesday), Priority(0)), "tue", Dist(0)]
 );
 
 define!(
     wednesday:
-    [(Token::Weekday(Day::Wednesday), Priority(0)), "wednesday", 2] |
-    [(Token::Weekday(Day::Wednesday), Priority(0)), "wed", 0]
+    [(Token::Weekday(Day::Wednesday), Priority(0)), "wednesday", Dist(2)] |
+    [(Token::Weekday(Day::Wednesday), Priority(0)), "wed", Dist(0)]
 );
 
 define!(
     thursday:
-    [(Token::Weekday(Day::Thursday), Priority(0)), "thursday", 2] |
-    [(Token::Weekday(Day::Thursday), Priority(0)), "thur", 0]
+    [(Token::Weekday(Day::Thursday), Priority(0)), "thursday", Dist(2)] |
+    [(Token::Weekday(Day::Thursday), Priority(0)), "thur", Dist(0)]
 );
 
 define!(
     friday:
-    [(Token::Weekday(Day::Friday), Priority(0)), "friday", 1] |
-    [(Token::Weekday(Day::Friday), Priority(0)), "fri", 0]
+    [(Token::Weekday(Day::Friday), Priority(0)), "friday", Dist(1)] |
+    [(Token::Weekday(Day::Friday), Priority(0)), "fri", Dist(0)]
 );
 
 define!(
     saturday:
-    [(Token::Weekday(Day::Saturday), Priority(0)), "saturday", 2] |
-    [(Token::Weekday(Day::Saturday), Priority(0)), "sat", 0]
+    [(Token::Weekday(Day::Saturday), Priority(0)), "saturday", Dist(2)] |
+    [(Token::Weekday(Day::Saturday), Priority(0)), "sat", Dist(0)]
 );
 
 define!(
     sunday:
-    [(Token::Weekday(Day::Sunday), Priority(0)), "sunday", 1] |
-    [(Token::Weekday(Day::Sunday), Priority(0)), "sun", 0]
+    [(Token::Weekday(Day::Sunday), Priority(0)), "sunday", Dist(1)] |
+    [(Token::Weekday(Day::Sunday), Priority(0)), "sun", Dist(0)]
 );
 
 combine!(day_of_week => monday | tuesday | wednesday | thursday | friday | saturday | sunday);
 
 // then adjectives
 
-define!(this: (Token::When(When::This), Priority(1)), "this", 1);
-define!(last: (Token::When(When::Last), Priority(1)), "last", 1);
-define!(past: (Token::When(When::Past), Priority(1)), "past", 1);
-define!(next: (Token::When(When::Next), Priority(1)), "next", 1);
+define!(this: (Token::When(When::This), Priority(1)), "this", Dist(1));
+define!(last: (Token::When(When::Last), Priority(1)), "last", Dist(1));
+define!(past: (Token::When(When::Past), Priority(1)), "past", Dist(1));
+define!(next: (Token::When(When::Next), Priority(1)), "next", Dist(1));
 
 combine!(when => this | last | past | next);
 
-define!(week_noun: (Token::Week, Priority(2)), "week", 1);
+define!(week_noun: (Token::Week, Priority(2)), "week", Dist(1));
 
 named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<CompleteStr<'a>>,
                              ( TokenDesc, TokenDesc, TokenDesc ) )>,

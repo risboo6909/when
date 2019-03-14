@@ -1,7 +1,7 @@
 use chrono::prelude::*;
 
 use crate::tokens::{Token, When, Priority};
-use crate::{rules::RuleResult, TokenDesc};
+use crate::{rules::RuleResult, TokenDesc, Dist};
 use crate::consts::HOUR;
 use tuple::TupleElements;
 
@@ -13,16 +13,16 @@ define_num!(hour, (Token::Number, Priority(0)), 0, 12);
 
 define!(
     am:
-    [(Token::When(When::AM), Priority(1)), "a.m.", 0] |
-    [(Token::When(When::AM), Priority(1)), "a.", 0] |
-    [(Token::When(When::AM), Priority(1)), "am", 0]
+    [(Token::When(When::AM), Priority(1)), "a.m.", Dist(0)] |
+    [(Token::When(When::AM), Priority(1)), "a.", Dist(0)] |
+    [(Token::When(When::AM), Priority(1)), "am", Dist(0)]
 );
 
 define!(
     pm:
-    [(Token::When(When::PM), Priority(1)), "p.m.", 0] |
-    [(Token::When(When::PM), Priority(1)), "p.", 0] |
-    [(Token::When(When::PM), Priority(1)), "pm", 0]
+    [(Token::When(When::PM), Priority(1)), "p.m.", Dist(0)] |
+    [(Token::When(When::PM), Priority(1)), "p.", Dist(0)] |
+    [(Token::When(When::PM), Priority(1)), "pm", Dist(0)]
 );
 
 combine!(when => am | pm);
@@ -51,14 +51,12 @@ fn make_time(res: &mut RuleResult, _local: DateTime<Local>, _input: &str) {
 
     let token = res.token_by_priority(Priority(1));
 
-    if token.is_some() {
-        match token.unwrap() {
-            Token::When(When::PM) => {
-                hrs += 12;
-            },
-            Token::When(When::AM) => {},
-            _ => (),
-        }
+    match token.unwrap_or(&Token::None) {
+        Token::When(When::PM) => {
+            hrs += 12;
+        },
+        Token::When(When::AM) => {},
+        _ => (),
     }
 
     res.time_shift.as_mut().unwrap().hour = hrs * HOUR;

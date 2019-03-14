@@ -1,7 +1,7 @@
 use chrono::prelude::*;
 
 use crate::tokens::{Adverbs, Articles, Token, TimeInterval, IntWord, When, Priority};
-use crate::{rules::RuleResult, TokenDesc, stub};
+use crate::{rules::RuleResult, TokenDesc, Dist, stub};
 use crate::consts;
 use tuple::TupleElements;
 
@@ -11,35 +11,35 @@ use nom::{
 
 define!(
     adverb:
-    [(Token::Adverbs(Adverbs::Few), Priority(0)), "few", 0] |
-    [(Token::Adverbs(Adverbs::Half), Priority(0)), "half", 1]
+    [(Token::Adverbs(Adverbs::Few), Priority(0)), "few", Dist(0)] |
+    [(Token::Adverbs(Adverbs::Half), Priority(0)), "half", Dist(1)]
 );
 
 define!(
     when:
-    [(Token::When(When::Within), Priority(1)), "within", 1] |
-    [(Token::When(When::In), Priority(1)), "in", 0]
+    [(Token::When(When::Within), Priority(1)), "within", Dist(1)] |
+    [(Token::When(When::In), Priority(1)), "in", Dist(0)]
 );
 
 define!(
     article:
-    [(Token::Articles(Articles::A), Priority(2)), "a", 0] |
-    [(Token::Articles(Articles::An), Priority(2)), "an", 0] |
-    [(Token::Articles(Articles::The), Priority(2)), "the", 0]
+    [(Token::Articles(Articles::A), Priority(2)), "a", Dist(0)] |
+    [(Token::Articles(Articles::An), Priority(2)), "an", Dist(0)] |
+    [(Token::Articles(Articles::The), Priority(2)), "the", Dist(0)]
 );
 
-define!(one: (Token::IntWord(IntWord::One), Priority(3)), "one", 0);
-define!(two: (Token::IntWord(IntWord::Two), Priority(3)), "two", 0);
-define!(three: (Token::IntWord(IntWord::Three), Priority(3)), "three", 1);
-define!(four: (Token::IntWord(IntWord::Four), Priority(3)), "four", 1);
-define!(five: (Token::IntWord(IntWord::Five), Priority(3)), "five", 1);
-define!(six: (Token::IntWord(IntWord::Six), Priority(3)), "six", 0);
-define!(seven: (Token::IntWord(IntWord::Seven), Priority(3)), "seven", 1);
-define!(eight: (Token::IntWord(IntWord::Eight), Priority(3)), "eight", 1);
-define!(nine: (Token::IntWord(IntWord::Nine), Priority(3)), "nine", 1);
-define!(ten: (Token::IntWord(IntWord::Ten), Priority(3)), "ten", 0);
-define!(eleven: (Token::IntWord(IntWord::Eleven), Priority(3)), "eleven", 1);
-define!(twelve: (Token::IntWord(IntWord::Twelve), Priority(3)), "twelve", 1);
+define!(one: (Token::IntWord(IntWord::One), Priority(3)), "one", Dist(0));
+define!(two: (Token::IntWord(IntWord::Two), Priority(3)), "two", Dist(0));
+define!(three: (Token::IntWord(IntWord::Three), Priority(3)), "three", Dist(1));
+define!(four: (Token::IntWord(IntWord::Four), Priority(3)), "four", Dist(1));
+define!(five: (Token::IntWord(IntWord::Five), Priority(3)), "five", Dist(1));
+define!(six: (Token::IntWord(IntWord::Six), Priority(3)), "six", Dist(0));
+define!(seven: (Token::IntWord(IntWord::Seven), Priority(3)), "seven", Dist(1));
+define!(eight: (Token::IntWord(IntWord::Eight), Priority(3)), "eight", Dist(1));
+define!(nine: (Token::IntWord(IntWord::Nine), Priority(3)), "nine", Dist(1));
+define!(ten: (Token::IntWord(IntWord::Ten), Priority(3)), "ten", Dist(0));
+define!(eleven: (Token::IntWord(IntWord::Eleven), Priority(3)), "eleven", Dist(1));
+define!(twelve: (Token::IntWord(IntWord::Twelve), Priority(3)), "twelve", Dist(1));
 
 combine!(int_word => one | two | three | four | five | six | seven | eight | nine | ten
                          | eleven | twelve);
@@ -50,45 +50,45 @@ combine!(number_or_intword => int_word | number);
 
 define!(
     seconds:
-    [(Token::TimeInterval(TimeInterval::Seconds), Priority(4)), "seconds", 1] |
-    [(Token::TimeInterval(TimeInterval::Seconds), Priority(4)), "second", 1]
+    [(Token::TimeInterval(TimeInterval::Seconds), Priority(4)), "seconds", Dist(1)] |
+    [(Token::TimeInterval(TimeInterval::Seconds), Priority(4)), "second", Dist(1)]
 );
 
 define!(
     minutes:
-    [(Token::TimeInterval(TimeInterval::Minutes), Priority(4)), "minutes", 1] |
-    [(Token::TimeInterval(TimeInterval::Minutes), Priority(4)), "minute", 1] |
-    [(Token::TimeInterval(TimeInterval::Minutes), Priority(4)), "min", 0]
+    [(Token::TimeInterval(TimeInterval::Minutes), Priority(4)), "minutes", Dist(1)] |
+    [(Token::TimeInterval(TimeInterval::Minutes), Priority(4)), "minute", Dist(1)] |
+    [(Token::TimeInterval(TimeInterval::Minutes), Priority(4)), "min", Dist(0)]
 );
 
 define!(
     hours:
-    [(Token::TimeInterval(TimeInterval::Hours), Priority(4)), "hours", 1] |
-    [(Token::TimeInterval(TimeInterval::Hours), Priority(4)), "hour", 1]
+    [(Token::TimeInterval(TimeInterval::Hours), Priority(4)), "hours", Dist(1)] |
+    [(Token::TimeInterval(TimeInterval::Hours), Priority(4)), "hour", Dist(1)]
 );
 
 define!(
     days:
-    [(Token::TimeInterval(TimeInterval::Days), Priority(4)), "days", 1] |
-    [(Token::TimeInterval(TimeInterval::Days), Priority(4)), "day", 0]
+    [(Token::TimeInterval(TimeInterval::Days), Priority(4)), "days", Dist(1)] |
+    [(Token::TimeInterval(TimeInterval::Days), Priority(4)), "day", Dist(0)]
 );
 
 define!(
     weeks:
-    [(Token::TimeInterval(TimeInterval::Weeks), Priority(4)), "weeks", 1] |
-    [(Token::TimeInterval(TimeInterval::Weeks), Priority(4)), "week", 1]
+    [(Token::TimeInterval(TimeInterval::Weeks), Priority(4)), "weeks", Dist(1)] |
+    [(Token::TimeInterval(TimeInterval::Weeks), Priority(4)), "week", Dist(1)]
 );
 
 define!(
     months:
-    [(Token::TimeInterval(TimeInterval::Months), Priority(4)), "months", 1] |
-    [(Token::TimeInterval(TimeInterval::Months), Priority(4)), "month", 1]
+    [(Token::TimeInterval(TimeInterval::Months), Priority(4)), "months", Dist(1)] |
+    [(Token::TimeInterval(TimeInterval::Months), Priority(4)), "month", Dist(1)]
 );
 
 define!(
     years:
-    [(Token::TimeInterval(TimeInterval::Years), Priority(4)), "years", 1] |
-    [(Token::TimeInterval(TimeInterval::Years), Priority(4)), "year", 1]
+    [(Token::TimeInterval(TimeInterval::Years), Priority(4)), "years", Dist(1)] |
+    [(Token::TimeInterval(TimeInterval::Years), Priority(4)), "year", Dist(1)]
 );
 
 combine!(time_interval => seconds | minutes | hours | days | weeks | months | years);
@@ -132,68 +132,60 @@ fn make_time(res: &mut RuleResult, local: DateTime<Local>, input: &str) {
 
     let token = res.token_by_priority(Priority(0));
 
-    if token.is_some() {
-        match token.unwrap() {
-            Token::Adverbs(Adverbs::Few) => num = 3,
-            Token::Adverbs(Adverbs::Half) => half = true,
-            _ => (),
-        }
+    match token.unwrap_or(&Token::None) {
+        Token::Adverbs(Adverbs::Few) => num = 3,
+        Token::Adverbs(Adverbs::Half) => half = true,
+        _ => (),
     }
 
     let token = res.token_by_priority(Priority(2));
 
-    if token.is_some() {
-        match token.unwrap() {
-            Token::Articles(_) => num = 1,
-            _ => (),
-        }
+    match token.unwrap_or(&Token::None) {
+        Token::Articles(_) => num = 1,
+        _ => (),
     }
 
     let token = res.token_by_priority(Priority(3));
 
-    if token.is_some() {
-        match token.unwrap() {
-            Token::IntWord(IntWord::One) => num = 1,
-            Token::IntWord(IntWord::Two) => num = 2,
-            Token::IntWord(IntWord::Three) => num = 3,
-            Token::IntWord(IntWord::Four) => num = 4,
-            Token::IntWord(IntWord::Five) => num = 5,
-            Token::IntWord(IntWord::Six) => num = 6,
-            Token::IntWord(IntWord::Seven) => num = 7,
-            Token::IntWord(IntWord::Eight) => num = 8,
-            Token::IntWord(IntWord::Nine) => num = 9,
-            Token::IntWord(IntWord::Ten) => num = 10,
-            Token::IntWord(IntWord::Eleven) => num = 11,
-            Token::IntWord(IntWord::Twelve) => num = 12,
+    match token.unwrap_or(&Token::None) {
+        Token::IntWord(IntWord::One) => num = 1,
+        Token::IntWord(IntWord::Two) => num = 2,
+        Token::IntWord(IntWord::Three) => num = 3,
+        Token::IntWord(IntWord::Four) => num = 4,
+        Token::IntWord(IntWord::Five) => num = 5,
+        Token::IntWord(IntWord::Six) => num = 6,
+        Token::IntWord(IntWord::Seven) => num = 7,
+        Token::IntWord(IntWord::Eight) => num = 8,
+        Token::IntWord(IntWord::Nine) => num = 9,
+        Token::IntWord(IntWord::Ten) => num = 10,
+        Token::IntWord(IntWord::Eleven) => num = 11,
+        Token::IntWord(IntWord::Twelve) => num = 12,
 
-            Token::Number(n) => num = *n as i64,
-            _ => (),
-        }
+        Token::Number(n) => num = *n as i64,
+        _ => (),
     }
 
     let token = res.token_by_priority(Priority(4));
 
-    if token.is_some() {
-        match token.unwrap() {
-            Token::TimeInterval(TimeInterval::Months) => {
-                if half {
-                    offset = 14 * consts::DAY as i64;
-                } else {
-                    res.time_shift.as_mut().unwrap().month =
-                        ((local.month() as i64 + num) % 12) as usize;
-                }
-            },
-            Token::TimeInterval(TimeInterval::Years) => {
-                if half {
-                    res.time_shift.as_mut().unwrap().month =
-                        ((local.month() as i64 + 6) % 12) as usize;
-                } else {
-                    res.time_shift.as_mut().unwrap().year =
-                        (local.year() as i64 + num) as usize;
-                }
-            },
-            _ => (),
-        }
+    match token.unwrap_or(&Token::None) {
+        Token::TimeInterval(TimeInterval::Months) => {
+            if half {
+                offset = 14 * consts::DAY as i64;
+            } else {
+                res.time_shift.as_mut().unwrap().month =
+                    ((local.month() as i64 + num) % 12) as usize;
+            }
+        },
+        Token::TimeInterval(TimeInterval::Years) => {
+            if half {
+                res.time_shift.as_mut().unwrap().month =
+                    ((local.month() as i64 + 6) % 12) as usize;
+            } else {
+                res.time_shift.as_mut().unwrap().year =
+                    (local.year() as i64 + num) as usize;
+            }
+        },
+        _ => (),
     }
 
     res.time_shift.as_mut().unwrap().offset = offset;

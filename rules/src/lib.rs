@@ -13,12 +13,15 @@ use nom::{
 };
 use strsim::damerau_levenshtein;
 
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
+pub struct Dist(pub usize);
+
 macro_rules! set {
     ( max_dist = $max_dist: expr, $exact_match: expr ) => {
         if !$exact_match {
             $max_dist
         } else {
-            0
+            crate::Dist(0)
         }
     };
 }
@@ -44,15 +47,15 @@ macro_rules! set {
 macro_rules! define {
     ( $func_name: ident: ($token: expr, $p: expr), $repr: expr, $max_dist: expr ) => (
         named_args!(pub $func_name<'a>(exact_match: bool)<CompleteStr<'a>, TokenDesc>,
-            call!(crate::recognize_word, CompleteStr($repr), set!(max_dist=$max_dist, exact_match),
-            crate::tokens::PToken::PToken($token, $p))
+            call!(crate::recognize_word, CompleteStr($repr), set!(max_dist=$max_dist,
+                  exact_match), crate::tokens::PToken::PToken($token, $p))
         );
     );
     ( $func_name: ident: $([($token: expr, $p: expr), $repr: expr, $max_dist: expr])|* ) => (
         named_args!(pub $func_name<'a>(exact_match: bool)<CompleteStr<'a>, TokenDesc>,
             alt!(
-                $(call!(crate::recognize_word, CompleteStr($repr), set!(max_dist=$max_dist, exact_match),
-                        crate::tokens::PToken::PToken($token, $p))) |*
+                $(call!(crate::recognize_word, CompleteStr($repr), set!(max_dist=$max_dist,
+                        exact_match), crate::tokens::PToken::PToken($token, $p))) |*
             )
         );
     );
@@ -76,7 +79,8 @@ macro_rules! define_num {
             let mut err_code = crate::my_errors::UNKNOWN;
             if let Ok((tail, n)) = crate::recognize_uint(input) {
                 if n >= $lower_bound && n <= $upper_bound {
-                    return Ok((tail, TokenDesc::new(crate::tokens::PToken::PToken($ctor(n), $p), 0)));
+                    return Ok((tail, TokenDesc::new(crate::tokens::PToken::PToken($ctor(n), $p),
+                                crate::Dist(0))));
                 }
                 err_code = crate::my_errors::OUT_OF_BOUNDS;
             }
@@ -182,7 +186,7 @@ named!(recognize_uint<CompleteStr, usize>,
 /// 2 tokens, function result type is a tuple with three elements, so tuple sizes of both match
 /// arms must be the same size.
 fn stub(input: CompleteStr) -> MyResult {
-    Ok((input, TokenDesc::new(crate::tokens::PToken::Stub, 0)))
+    Ok((input, TokenDesc::new(crate::tokens::PToken::Stub, crate::Dist(0))))
 }
 
 #[inline]
@@ -198,7 +202,7 @@ fn wrap_error(input: CompleteStr, error_code: u32) -> MyResult {
 fn recognize_word<'a>(
     input: CompleteStr<'a>,
     pattern: CompleteStr<'a>,
-    max_dist: usize,
+    max_dist: crate::Dist,
     token: crate::tokens::PToken,
 ) -> MyResult<'a> {
 
@@ -207,13 +211,13 @@ fn recognize_word<'a>(
             // skip empty strings
             return wrap_error(input, my_errors::EMPTY);
         }
-        if max_dist == 0 {
+        if max_dist == crate::Dist(0) {
             // when max_dist is 0 perform just plain string comparison
             if *word == *pattern {
-                return Ok((tail, TokenDesc::new(token, 0)));
+                return Ok((tail, TokenDesc::new(token, crate::Dist(0))));
             }
         } else {
-            let dist = damerau_levenshtein(*word, *pattern);
+            let dist = Dist(damerau_levenshtein(*word, *pattern));
             if dist <= max_dist {
                 return Ok((tail, TokenDesc::new(token, dist)));
             }
@@ -231,7 +235,7 @@ fn best_fit<'a>(
     funcs: Vec<&Fn(CompleteStr<'a>, bool) -> MyResult<'a>>,
 ) -> MyResult<'a> {
 
-    let mut min_dist = std::usize::MAX;
+    let mut min_dist = Dist(std::usize::MAX);
 
     let mut selected_token = crate::tokens::PToken::None;
     let mut selected_count = 0;

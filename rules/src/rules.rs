@@ -3,17 +3,18 @@ use chrono::prelude::{DateTime, Local};
 
 use crate::tokens::{Token, PToken, Priority};
 use crate::errors::DateTimeError;
+use crate::Dist;
 
 pub type MyResult<'a> = IResult<CompleteStr<'a>, TokenDesc>;
 
 #[derive(Debug, Clone)]
 pub struct TokenDesc {
     pub token: PToken,
-    pub dist: usize,
+    pub dist: Dist,
 }
 
 impl TokenDesc {
-    pub(crate) fn new(token: PToken, dist: usize) -> Self {
+    pub(crate) fn new(token: PToken, dist: Dist) -> Self {
         Self { token, dist }
     }
 }
