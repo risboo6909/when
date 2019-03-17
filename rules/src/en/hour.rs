@@ -39,11 +39,8 @@ fn make_time(res: &mut RuleResult, _local: DateTime<Local>, _input: &str) {
 
     let mut hrs = 0;
 
-    match token.unwrap_or(&Token::None) {
-        Token::Number(n) => {
-            hrs = *n;
-        },
-        _ => (),
+    if let Some(Token::Number(n)) = token {
+        hrs = *n;
     }
 
     let token = res.token_by_priority(Priority(1));
