@@ -27,12 +27,10 @@ combine!(when => am | pm);
 
 named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<CompleteStr<'a>>,
                              ( TokenDesc, TokenDesc) )>,
-
     many_till!(take!(1),
         // time (hours), for example 5am, 6p.m., 4a., 3 p.m.
         tuple!(apply!(hour, true), apply!(when, exact_match))
     )
-
 );
 
 fn make_time(res: &mut RuleResult, _local: DateTime<Local>, _input: &str) {
@@ -67,7 +65,6 @@ make_interpreter!(indices[0, 1]);
 #[cfg(test)]
 mod tests {
     use chrono::prelude::*;
-    use crate::tokens::{Token, Weekday as Day, When};
     use crate::MatchBounds;
     use super::interpret;
 

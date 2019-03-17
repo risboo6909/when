@@ -1,3 +1,5 @@
+use chrono::format::StrftimeItems;
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Weekday {
     Monday,
@@ -7,6 +9,11 @@ pub enum Weekday {
     Friday,
     Saturday,
     Sunday,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum Pronouns {
+    This,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -27,6 +34,14 @@ pub enum When {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub enum TimeOfDay {
+    Night,
+    Morning,
+    Evening,
+    Noon,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub enum IntWord {
     One,
     Two,
@@ -40,6 +55,31 @@ pub enum IntWord {
     Ten,
     Eleven,
     Twelve,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum Ordinals {
+    First,
+    Second,
+    Third,
+    Fourth,
+    Fifth,
+    Sixth,
+    Seventh,
+    Eighth,
+    Ninth,
+    Tenth,
+    Eleventh,
+    Twelfth,
+    Thirteenth,
+    Fourteenth,
+    Fifteenth,
+    Sixteenth,
+    Seventeenth,
+    Eighteenth,
+    Nineteenth,
+    Twentieth,
+
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -76,7 +116,9 @@ pub enum Token {
     Number(usize),
     IntWord(IntWord),
     TimeInterval(TimeInterval),
+    TimeOfDay(TimeOfDay),
     Adverbs(Adverbs),
+    Pronouns(Pronouns),
 }
 
 #[derive(Debug, Clone, PartialEq)]

@@ -2,6 +2,7 @@ use chrono::prelude::*;
 
 use crate::tokens::{Adverbs, Articles, Token, TimeInterval, IntWord, When, Priority};
 use crate::{rules::RuleResult, TokenDesc, Dist, stub, consts};
+use crate::common::match_num;
 
 use nom::{
     alt, apply, call, many_till, named_args, take, tuple, types::CompleteStr
@@ -113,7 +114,6 @@ named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<CompleteStr<'a>>,
                    apply!(time_interval, exact_match))
         )
     )
-
 );
 
 make_interpreter!(indices[0, 1, 2, 3]);
@@ -121,7 +121,7 @@ make_interpreter!(indices[0, 1, 2, 3]);
 fn make_time(res: &mut RuleResult, local: DateTime<Local>, input: &str) {
 
     let mut half = false;
-    let mut num: i64 = 0;
+    let mut num: i64 = 1;
 
     let token = res.token_by_priority(Priority(0));
 
@@ -131,32 +131,7 @@ fn make_time(res: &mut RuleResult, local: DateTime<Local>, input: &str) {
         _ => (),
     }
 
-    let token = res.token_by_priority(Priority(2));
-
-    match token.unwrap_or(&Token::None) {
-        Token::Articles(_) => num = 1,
-        _ => (),
-    }
-
-    let token = res.token_by_priority(Priority(3));
-
-    match token.unwrap_or(&Token::None) {
-        Token::IntWord(IntWord::One) => num = 1,
-        Token::IntWord(IntWord::Two) => num = 2,
-        Token::IntWord(IntWord::Three) => num = 3,
-        Token::IntWord(IntWord::Four) => num = 4,
-        Token::IntWord(IntWord::Five) => num = 5,
-        Token::IntWord(IntWord::Six) => num = 6,
-        Token::IntWord(IntWord::Seven) => num = 7,
-        Token::IntWord(IntWord::Eight) => num = 8,
-        Token::IntWord(IntWord::Nine) => num = 9,
-        Token::IntWord(IntWord::Ten) => num = 10,
-        Token::IntWord(IntWord::Eleven) => num = 11,
-        Token::IntWord(IntWord::Twelve) => num = 12,
-
-        Token::Number(n) => num = *n as i64,
-        _ => (),
-    }
+    let num = match_num(res.token_by_priority(Priority(3))).unwrap_or(num);
 
     let token = res.token_by_priority(Priority(4));
 
@@ -218,7 +193,6 @@ fn make_time(res: &mut RuleResult, local: DateTime<Local>, input: &str) {
 #[cfg(test)]
 mod tests {
     use chrono::prelude::*;
-    use crate::tokens::{Token, Weekday as Day, When};
     use crate::{MatchBounds, consts};
     use super::interpret;
     use crate::errors::DateTimeError::AmbiguousTime;
@@ -238,6 +212,24 @@ mod tests {
 
         let result = interpret("in the few days", false, fixed_time());
         assert_eq!(result.context.unwrap().duration, 3 * consts::DAY as i64);
+
+        let result = interpret("in 5 minutes", false, fixed_time());
+        assert_eq!(result.context.unwrap().duration, 5 * consts::MINUTE as i64);
+
+        let result = interpret("in 5 minutes I will go home", false, fixed_time());
+        assert_eq!(result.context.unwrap().duration, 5 * consts::MINUTE as i64);
+
+        let result = interpret("we have to do something within 10 days.", false, fixed_time());
+        assert_eq!(result.context.unwrap().duration, 10 * consts::DAY as i64);
+
+        let result = interpret("we have to do something within five days.", false, fixed_time());
+        assert_eq!(result.context.unwrap().duration, 5 * consts::DAY as i64);
+
+        let result = interpret("in a half year", false, fixed_time());
+        assert_eq!(result.context.unwrap().month, 7);
+
+        let result = interpret("drop me a line in a half hour", false, fixed_time());
+        assert_eq!(result.context.unwrap().duration, 30 * consts::MINUTE as i64);
 
     }
 }

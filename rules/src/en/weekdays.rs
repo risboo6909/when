@@ -68,7 +68,6 @@ define!(week_noun: (Token::Week, Priority(2)), "week", Dist(1));
 
 named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<CompleteStr<'a>>,
                              ( TokenDesc, TokenDesc, TokenDesc ) )>,
-
     many_till!(take!(1),
         alt!(
             // day of week, when, "week", e.g. "tuesday next week"
@@ -78,7 +77,6 @@ named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<CompleteStr<'a>>,
             tuple!(apply!(when, exact_match), apply!(day_of_week, exact_match), call!(stub))
         )
     )
-
 );
 
 fn make_time(res: &mut RuleResult, local: DateTime<Local>, input: &str) {
@@ -159,9 +157,7 @@ make_interpreter!(indices[0, 1, 2]);
 
 #[cfg(test)]
 mod tests {
-
     use chrono::prelude::*;
-    use crate::tokens::{Token, Weekday as Day, When};
     use crate::MatchBounds;
     use super::interpret;
     use crate::errors::DateTimeError::AmbiguousTime;
@@ -173,49 +169,49 @@ mod tests {
 
     #[test]
     fn test_past_last() {
-        let mut result = interpret("do it for the past Monday", false, fixed_time());
+        let result = interpret("do it for the past Monday", false, fixed_time());
         assert_eq!(result.bounds, Some(MatchBounds { start_idx: 14, end_idx: 24 }));
         assert_eq!(result.get_offset(), -86400);
 
-        result = interpret("past saturday", false, fixed_time());
+        let result = interpret("past saturday", false, fixed_time());
         assert_eq!(result.bounds, Some(MatchBounds { start_idx: 0, end_idx: 12 }));
         assert_eq!(result.get_offset(), -259200);
 
-        result = interpret("pst frday", false, fixed_time());
+        let result = interpret("pst frday", false, fixed_time());
         assert_eq!(result.bounds, Some(MatchBounds { start_idx: 0, end_idx: 8 }));
         assert_eq!(result.get_offset(), -345600);
 
-        result = interpret("pat thrday", false, fixed_time());
+        let result = interpret("pat thrday", false, fixed_time());
         assert_eq!(result.bounds, Some(MatchBounds { start_idx: 0, end_idx: 9 }));
         assert_eq!(result.get_offset(), -432000);
 
-        result = interpret("past wednesday", true, fixed_time());
+        let result = interpret("past wednesday", true, fixed_time());
         assert_eq!(result.bounds, Some(MatchBounds { start_idx: 0, end_idx: 13 }));
         assert_eq!(result.get_offset(), -518400);
 
-        result = interpret("past tuesday", true, fixed_time());
+        let result = interpret("past tuesday", true, fixed_time());
         assert_eq!(result.bounds, Some(MatchBounds { start_idx: 0, end_idx: 11 }));
         assert_eq!(result.get_offset(), -604800);
 
-        result = interpret("lst monday", false, fixed_time());
+        let result = interpret("lst monday", false, fixed_time());
         assert_eq!(result.bounds, Some(MatchBounds { start_idx: 0, end_idx: 9 }));
         assert_eq!(result.get_offset(), -86400);
     }
 
     #[test]
     fn test_next() {
-        let mut result = interpret("next monday", false, fixed_time());
+        let result = interpret("next monday", false, fixed_time());
         assert_eq!(result.bounds, Some(MatchBounds { start_idx: 0, end_idx: 10 }));
         assert_eq!(result.get_offset(), 518400);
 
-        let mut result = interpret("drop me a line at next wednesday", false, fixed_time());
+        let result = interpret("drop me a line at next wednesday", false, fixed_time());
         assert_eq!(result.bounds, Some(MatchBounds { start_idx: 18, end_idx: 31 }));
         assert_eq!(result.get_offset(), 86400);
     }
 
     #[test]
     fn test_this() {
-        let mut result = interpret("drop me a line at this monday", false, fixed_time());
+        let result = interpret("drop me a line at this monday", false, fixed_time());
         assert_eq!(result.context, Err(AmbiguousTime
             {msg: "drop me a line at this monday".to_string()}));
 
