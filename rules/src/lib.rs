@@ -1,7 +1,8 @@
 mod errors;
 mod consts;
 mod tokens;
-mod common;
+mod common_matchers;
+
 pub mod rules;
 
 use crate::errors as my_errors;

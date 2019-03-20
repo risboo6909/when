@@ -2,7 +2,9 @@ use chrono::prelude::*;
 
 use crate::tokens::{Adverbs, Articles, Token, TimeInterval, IntWord, When, Priority};
 use crate::{rules::RuleResult, TokenDesc, Dist, stub, consts};
-use crate::common::match_num;
+use crate::common_matchers::match_num;
+
+use super::common::int_word;
 
 use nom::{
     alt, apply, call, many_till, named_args, take, tuple, types::CompleteStr
@@ -26,22 +28,6 @@ define!(
     [(Token::Articles(Articles::An), Priority(2)), "an", Dist(0)] |
     [(Token::Articles(Articles::The), Priority(2)), "the", Dist(0)]
 );
-
-define!(one: (Token::IntWord(IntWord::One), Priority(3)), "one", Dist(0));
-define!(two: (Token::IntWord(IntWord::Two), Priority(3)), "two", Dist(0));
-define!(three: (Token::IntWord(IntWord::Three), Priority(3)), "three", Dist(1));
-define!(four: (Token::IntWord(IntWord::Four), Priority(3)), "four", Dist(1));
-define!(five: (Token::IntWord(IntWord::Five), Priority(3)), "five", Dist(1));
-define!(six: (Token::IntWord(IntWord::Six), Priority(3)), "six", Dist(0));
-define!(seven: (Token::IntWord(IntWord::Seven), Priority(3)), "seven", Dist(1));
-define!(eight: (Token::IntWord(IntWord::Eight), Priority(3)), "eight", Dist(1));
-define!(nine: (Token::IntWord(IntWord::Nine), Priority(3)), "nine", Dist(1));
-define!(ten: (Token::IntWord(IntWord::Ten), Priority(3)), "ten", Dist(0));
-define!(eleven: (Token::IntWord(IntWord::Eleven), Priority(3)), "eleven", Dist(1));
-define!(twelve: (Token::IntWord(IntWord::Twelve), Priority(3)), "twelve", Dist(1));
-
-combine!(int_word => one | two | three | four | five | six | seven | eight | nine | ten
-                         | eleven | twelve);
 
 define_num!(number, (Token::Number, Priority(3)), 0, 12);
 
@@ -137,31 +123,31 @@ fn make_time(res: &mut RuleResult, local: DateTime<Local>, input: &str) {
 
     match token.unwrap_or(&Token::None) {
         Token::TimeInterval(TimeInterval::Second) => {
-            res.unwrap_ctx().duration = num;
+            res.unwrap_mut().duration = num;
         },
         Token::TimeInterval(TimeInterval::Minute) => {
-            res.unwrap_ctx().duration = if half {
+            res.unwrap_mut().duration = if half {
                 30 * consts::SECOND as i64
             } else {
                 num * consts::MINUTE as i64
             }
         },
         Token::TimeInterval(TimeInterval::Hour) => {
-            res.unwrap_ctx().duration = if half {
+            res.unwrap_mut().duration = if half {
                 30 * consts::MINUTE as i64
             } else {
                 num * consts::HOUR as i64
             }
         },
         Token::TimeInterval(TimeInterval::Day) => {
-            res.unwrap_ctx().duration = if half {
+            res.unwrap_mut().duration = if half {
                 12 * consts::HOUR as i64
             } else {
                 num * consts::DAY as i64
             }
         },
         Token::TimeInterval(TimeInterval::Week) => {
-            res.unwrap_ctx().duration = if half {
+            res.unwrap_mut().duration = if half {
                 7 * 12 * consts::HOUR as i64
             } else {
                 num * consts::WEEK as i64
@@ -169,18 +155,18 @@ fn make_time(res: &mut RuleResult, local: DateTime<Local>, input: &str) {
         },
         Token::TimeInterval(TimeInterval::Month) => {
             if half {
-                res.unwrap_ctx().duration = 14 * consts::DAY as i64;
+                res.unwrap_mut().duration = 14 * consts::DAY as i64;
             } else {
-                res.unwrap_ctx().month =
+                res.unwrap_mut().month =
                     ((local.month() as i64 + num) % 12) as usize;
             }
         },
         Token::TimeInterval(TimeInterval::Year) => {
             if half {
-                res.unwrap_ctx().month =
+                res.unwrap_mut().month =
                     ((local.month() as i64 + 6) % 12) as usize;
             } else {
-                res.unwrap_ctx().year =
+                res.unwrap_mut().year =
                     (local.year() as i64 + num) as usize;
             }
         },

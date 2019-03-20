@@ -148,7 +148,7 @@ fn make_time(res: &mut RuleResult, local: DateTime<Local>, input: &str) {
     }
 
     if res.context.is_ok() {
-        res.unwrap_ctx().duration = offset;
+        res.unwrap_mut().duration = offset;
     }
 
 }

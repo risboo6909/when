@@ -40,9 +40,10 @@ pub struct Context {
     pub duration: i64,
 
     // absolute values
-    pub hour: usize,
-    pub month: usize,
     pub year: usize,
+    pub month: usize,
+    pub hour: usize,
+    pub minute: usize,
 }
 
 #[derive(Debug)]
@@ -146,7 +147,11 @@ impl<'a> RuleResult<'a> {
         }
     }
 
-    pub fn unwrap_ctx(&mut self) -> &mut Context {
+    pub fn unwrap(&self) -> &Context {
+        self.context.as_ref().unwrap()
+    }
+
+    pub fn unwrap_mut(&mut self) -> &mut Context {
         self.context.as_mut().unwrap()
     }
 

@@ -2,10 +2,7 @@ use chrono::prelude::*;
 
 use crate::tokens::{Token, When, Priority};
 use crate::{rules::RuleResult, TokenDesc, Dist, consts};
-
-use nom::{
-    alt, apply, call, many_till, named_args, take, tuple, types::CompleteStr
-};
+use nom::{alt, call, apply, named_args, many_till, tuple, take, types::CompleteStr};
 
 define_num!(hour, (Token::Number, Priority(0)), 0, 12);
 
@@ -53,7 +50,7 @@ fn make_time(res: &mut RuleResult, _local: DateTime<Local>, _input: &str) {
         _ => (),
     }
 
-    res.unwrap_ctx().hour = hrs * consts::HOUR;
+    res.unwrap_mut().hour = hrs * consts::HOUR;
 
 }
 
