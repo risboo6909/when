@@ -1,17 +1,18 @@
-mod errors;
-mod consts;
-mod tokens;
 mod common_matchers;
+mod consts;
+mod errors;
+mod tokens;
 
 pub mod rules;
 
 use crate::errors as my_errors;
-use crate::rules::{TokenDesc, MyResult, RuleResult, FnRule, MatchBounds, MatchResult};
-use crate::tokens::PToken;
+use crate::rules::{FnRule, MatchBounds, MatchResult, MyResult, RuleResult, TokenDesc};
+use crate::tokens::{PToken, Token};
 
 use chrono::prelude::Local;
 use nom::{
-    named, preceded, take_while, types::CompleteStr, Context, ErrorKind, IResult, map_res, recognize
+    self, char, map_res, named, named_args, preceded, recognize, tag, take_while,
+    types::CompleteStr, Context, ErrorKind, IResult,
 };
 use strsim::damerau_levenshtein;
 
@@ -63,6 +64,23 @@ macro_rules! define {
     );
 }
 
+macro_rules! define_char {
+    ( $func_name: ident: $p: expr, $repr: expr ) => {
+        fn $func_name<'a>(input: CompleteStr<'a>) -> crate::MyResult<'a> {
+            if let Ok((tail, _)) = crate::recognize_symbol(input, $repr) {
+                return Ok((
+                    tail,
+                    TokenDesc::new(
+                        crate::tokens::PToken::PToken(Token::Char, $p),
+                        crate::Dist(0),
+                    ),
+                ));
+            }
+            crate::wrap_error(input, crate::my_errors::UNKNOWN)
+        }
+    };
+}
+
 /// Macro simplifies bounded number parsers definition.
 ///
 /// Examples:
@@ -75,20 +93,21 @@ macro_rules! define {
 ///
 /// define_num!(hour, (Token::Minute, 0), 0, 60);
 macro_rules! define_num {
-    ( $func_name: ident, ($ctor: expr, $p: expr), $lower_bound: expr, $upper_bound: expr ) => (
-
+    ( $func_name: ident: ($ctor: expr, $p: expr), $lower_bound: expr, $upper_bound: expr ) => {
         fn $func_name(input: CompleteStr, _: bool) -> crate::MyResult {
             let mut err_code = crate::my_errors::UNKNOWN;
             if let Ok((tail, n)) = crate::recognize_uint(input) {
                 if n >= $lower_bound && n <= $upper_bound {
-                    return Ok((tail, TokenDesc::new(crate::tokens::PToken::PToken($ctor(n), $p),
-                                crate::Dist(0))));
+                    return Ok((
+                        tail,
+                        TokenDesc::new(crate::tokens::PToken::PToken($ctor(n), $p), crate::Dist(0)),
+                    ));
                 }
                 err_code = crate::my_errors::OUT_OF_BOUNDS;
             }
             return crate::wrap_error(input, err_code);
         }
-    );
+    };
 }
 
 /// Macro helps to combine tokens defined by define! macro into one, i.e.
@@ -105,7 +124,6 @@ macro_rules! combine {
         );
     );
 }
-
 
 /// TODO: add comment
 macro_rules! make_interpreter {
@@ -165,8 +183,12 @@ named!(tokenize_word<CompleteStr, CompleteStr>,
 ///
 /// "  , 321  " -> 321
 named!(recognize_uint<CompleteStr, usize>,
-    map_res!(preceded!(ltrim, recognize!(nom::digit)),
-                        |s: CompleteStr| s.parse::<usize>())
+    map_res!(preceded!(ltrim, recognize!(nom::digit)), |s: CompleteStr| s.parse::<usize>())
+);
+
+/// TODO: Add comment
+named_args!(recognize_symbol<'a>(c: char)<CompleteStr<'a>, char>,
+    preceded!(ltrim, char!(c))
 );
 
 /// Stub combinator should be used in situations when there are several alternatives
@@ -190,7 +212,10 @@ named!(recognize_uint<CompleteStr, usize>,
 /// 2 tokens, function result type is a tuple with three elements, so tuple sizes of both match
 /// arms must be the same size.
 fn stub(input: CompleteStr) -> MyResult {
-    Ok((input, TokenDesc::new(crate::tokens::PToken::Stub, crate::Dist(0))))
+    Ok((
+        input,
+        TokenDesc::new(crate::tokens::PToken::Stub, crate::Dist(0)),
+    ))
 }
 
 #[inline]
@@ -209,7 +234,6 @@ fn recognize_word<'a>(
     max_dist: crate::Dist,
     token: crate::tokens::PToken,
 ) -> MyResult<'a> {
-
     if let Ok((tail, word)) = tokenize_word(input) {
         if *word == "" {
             // skip empty strings
@@ -238,7 +262,6 @@ fn best_fit<'a>(
     exact_match: bool,
     funcs: Vec<&Fn(CompleteStr<'a>, bool) -> MyResult<'a>>,
 ) -> MyResult<'a> {
-
     let mut min_dist = Dist(std::usize::MAX);
 
     let mut selected_token = crate::tokens::PToken::None;
@@ -281,7 +304,6 @@ pub(crate) fn apply_generic(
     rules: &[FnRule],
     exact_match: bool,
 ) -> Vec<MatchResult> {
-
     // empty vector of matched tokens
     let mut matched_tokens = Vec::new();
     let mut end_of_last_match_idx = 0;
@@ -297,13 +319,11 @@ pub(crate) fn apply_generic(
                     context,
                 } => {
                     // applied rule had a match
-                    matched_tokens.push(
-                        MatchResult::new(
-                            context,
-                            end_of_last_match_idx + bounds.start_idx,
-                            end_of_last_match_idx + bounds.end_idx,
-                        )
-                    );
+                    matched_tokens.push(MatchResult::new(
+                        context,
+                        end_of_last_match_idx + bounds.start_idx,
+                        end_of_last_match_idx + bounds.end_idx,
+                    ));
                     // continue with the rest of the string
                     had_match = true;
                     input = tail;
@@ -337,7 +357,17 @@ pub(crate) fn apply_generic(
 /// start_idx = prefix.len() + 1 or 0 if there is no prefix
 /// end_idx = input.len() - tail.len() - 1
 #[inline]
-pub(crate) fn match_bounds(prefix: Vec<CompleteStr>, input: &str, tail: CompleteStr) -> crate::MatchBounds {
-    crate::MatchBounds::new(if prefix.is_empty() { 0 } else { prefix.len() + 1 },
-                            input.len() - tail.len() - 1)
+pub(crate) fn match_bounds(
+    prefix: Vec<CompleteStr>,
+    input: &str,
+    tail: CompleteStr,
+) -> crate::MatchBounds {
+    crate::MatchBounds::new(
+        if prefix.is_empty() {
+            0
+        } else {
+            prefix.len() + 1
+        },
+        input.len() - tail.len() - 1,
+    )
 }

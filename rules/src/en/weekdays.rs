@@ -1,13 +1,11 @@
-use time::Duration;
 use chrono::prelude::*;
+use time::Duration;
 
-use crate::tokens::{Token, Weekday as Day, When, Priority};
-use crate::{rules::RuleResult, TokenDesc, Dist, stub};
 use crate::errors::DateTimeError;
+use crate::tokens::{Priority, Token, Weekday as Day, When};
+use crate::{rules::RuleResult, stub, Dist, TokenDesc};
 
-use nom::{
-    alt, apply, call, many_till, named_args, take, tuple, types::CompleteStr,
-};
+use nom::{alt, apply, call, many_till, named_args, take, tuple, types::CompleteStr};
 
 // days of week have biggest priority
 
@@ -74,7 +72,7 @@ named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<CompleteStr<'a>>,
             tuple!(apply!(day_of_week, exact_match), apply!(when, exact_match),
                    apply!(week_noun, exact_match)) |
             // when and then any day of week, e.g. "last friday"
-            tuple!(apply!(when, exact_match), apply!(day_of_week, exact_match), call!(stub))
+            tuple!(apply!(when, exact_match), apply!(day_of_week, exact_match), stub)
         )
     )
 );
@@ -88,25 +86,25 @@ fn make_time(res: &mut RuleResult, local: DateTime<Local>, input: &str) {
     match token.unwrap_or(&Token::None) {
         Token::Weekday(Day::Monday) => {
             day = 0;
-        },
+        }
         Token::Weekday(Day::Tuesday) => {
             day = 1;
-        },
+        }
         Token::Weekday(Day::Wednesday) => {
             day = 2;
-        },
+        }
         Token::Weekday(Day::Thursday) => {
             day = 3;
-        },
+        }
         Token::Weekday(Day::Friday) => {
             day = 4;
-        },
+        }
         Token::Weekday(Day::Saturday) => {
             day = 5;
-        },
+        }
         Token::Weekday(Day::Sunday) => {
             day = 6;
-        },
+        }
         _ => (),
     }
 
@@ -120,7 +118,7 @@ fn make_time(res: &mut RuleResult, local: DateTime<Local>, input: &str) {
             } else {
                 offset = Duration::days(7 + delta).num_seconds();
             }
-        },
+        }
         Token::When(When::Last) | Token::When(When::Past) => {
             let delta = local.weekday() as i64 - day;
             if delta > 0 {
@@ -128,7 +126,7 @@ fn make_time(res: &mut RuleResult, local: DateTime<Local>, input: &str) {
             } else {
                 offset = -Duration::days(7 + delta).num_seconds();
             }
-        },
+        }
         Token::When(When::This) => {
             let weekday_i64 = local.weekday() as i64;
             let delta = day - weekday_i64;
@@ -143,24 +141,23 @@ fn make_time(res: &mut RuleResult, local: DateTime<Local>, input: &str) {
             } else {
                 offset = 0;
             }
-        },
+        }
         _ => (),
     }
 
     if res.context.is_ok() {
         res.unwrap_mut().duration = offset;
     }
-
 }
 
 make_interpreter!(indices[0, 1, 2]);
 
 #[cfg(test)]
 mod tests {
-    use chrono::prelude::*;
-    use crate::MatchBounds;
     use super::interpret;
     use crate::errors::DateTimeError::AmbiguousTime;
+    use crate::MatchBounds;
+    use chrono::prelude::*;
 
     fn fixed_time() -> DateTime<Local> {
         // 2019 1st January, Tuesday
@@ -170,53 +167,117 @@ mod tests {
     #[test]
     fn test_past_last() {
         let result = interpret("do it for the past Monday", false, fixed_time());
-        assert_eq!(result.bounds, Some(MatchBounds { start_idx: 14, end_idx: 24 }));
+        assert_eq!(
+            result.bounds,
+            Some(MatchBounds {
+                start_idx: 14,
+                end_idx: 24
+            })
+        );
         assert_eq!(result.get_offset(), -86400);
 
         let result = interpret("past saturday", false, fixed_time());
-        assert_eq!(result.bounds, Some(MatchBounds { start_idx: 0, end_idx: 12 }));
+        assert_eq!(
+            result.bounds,
+            Some(MatchBounds {
+                start_idx: 0,
+                end_idx: 12
+            })
+        );
         assert_eq!(result.get_offset(), -259200);
 
         let result = interpret("pst frday", false, fixed_time());
-        assert_eq!(result.bounds, Some(MatchBounds { start_idx: 0, end_idx: 8 }));
+        assert_eq!(
+            result.bounds,
+            Some(MatchBounds {
+                start_idx: 0,
+                end_idx: 8
+            })
+        );
         assert_eq!(result.get_offset(), -345600);
 
         let result = interpret("pat thrday", false, fixed_time());
-        assert_eq!(result.bounds, Some(MatchBounds { start_idx: 0, end_idx: 9 }));
+        assert_eq!(
+            result.bounds,
+            Some(MatchBounds {
+                start_idx: 0,
+                end_idx: 9
+            })
+        );
         assert_eq!(result.get_offset(), -432000);
 
         let result = interpret("past wednesday", true, fixed_time());
-        assert_eq!(result.bounds, Some(MatchBounds { start_idx: 0, end_idx: 13 }));
+        assert_eq!(
+            result.bounds,
+            Some(MatchBounds {
+                start_idx: 0,
+                end_idx: 13
+            })
+        );
         assert_eq!(result.get_offset(), -518400);
 
         let result = interpret("past tuesday", true, fixed_time());
-        assert_eq!(result.bounds, Some(MatchBounds { start_idx: 0, end_idx: 11 }));
+        assert_eq!(
+            result.bounds,
+            Some(MatchBounds {
+                start_idx: 0,
+                end_idx: 11
+            })
+        );
         assert_eq!(result.get_offset(), -604800);
 
         let result = interpret("lst monday", false, fixed_time());
-        assert_eq!(result.bounds, Some(MatchBounds { start_idx: 0, end_idx: 9 }));
+        assert_eq!(
+            result.bounds,
+            Some(MatchBounds {
+                start_idx: 0,
+                end_idx: 9
+            })
+        );
         assert_eq!(result.get_offset(), -86400);
     }
 
     #[test]
     fn test_next() {
         let result = interpret("next monday", false, fixed_time());
-        assert_eq!(result.bounds, Some(MatchBounds { start_idx: 0, end_idx: 10 }));
+        assert_eq!(
+            result.bounds,
+            Some(MatchBounds {
+                start_idx: 0,
+                end_idx: 10
+            })
+        );
         assert_eq!(result.get_offset(), 518400);
 
         let result = interpret("drop me a line at next wednesday", false, fixed_time());
-        assert_eq!(result.bounds, Some(MatchBounds { start_idx: 18, end_idx: 31 }));
+        assert_eq!(
+            result.bounds,
+            Some(MatchBounds {
+                start_idx: 18,
+                end_idx: 31
+            })
+        );
         assert_eq!(result.get_offset(), 86400);
     }
 
     #[test]
     fn test_this() {
         let result = interpret("drop me a line at this monday", false, fixed_time());
-        assert_eq!(result.context, Err(AmbiguousTime
-            {msg: "drop me a line at this monday".to_string()}));
+        assert_eq!(
+            result.context,
+            Err(AmbiguousTime {
+                msg: "drop me a line at this monday".to_string()
+            })
+        );
 
         let result = interpret("this friday", false, fixed_time());
-        assert_eq!(result.bounds, Some(MatchBounds { start_idx: 0, end_idx: 10 }));
+        assert_eq!(
+            result.bounds,
+            Some(MatchBounds {
+                start_idx: 0,
+                end_idx: 10
+            })
+        );
         assert_eq!(result.get_offset(), 259200);
     }
 }

@@ -2,13 +2,13 @@ mod common;
 
 mod weekdays;
 mod casual_date_time;
-mod hour;
+mod time;
 mod deadline;
 
 use crate::apply_generic;
 use crate::rules::{FnRule, MatchResult};
 
-const RULES: [FnRule; 2] = [weekdays::interpret, hour::interpret];
+const RULES: [FnRule; 2] = [weekdays::interpret, time::interpret];
 
 pub fn parse(input: &str, exact_match: bool) -> Vec<MatchResult> {
     let input_lowered = input.to_lowercase();

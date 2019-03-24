@@ -1,14 +1,12 @@
 use chrono::prelude::*;
 
-use crate::tokens::{Adverbs, Articles, Token, TimeInterval, IntWord, When, Priority};
-use crate::{rules::RuleResult, TokenDesc, Dist, stub, consts};
 use crate::common_matchers::match_num;
+use crate::tokens::{Adverbs, Articles, IntWord, Priority, TimeInterval, Token, When};
+use crate::{consts, rules::RuleResult, stub, Dist, TokenDesc};
 
 use super::common::int_word;
 
-use nom::{
-    alt, apply, call, many_till, named_args, take, tuple, types::CompleteStr
-};
+use nom::{alt, apply, call, many_till, named_args, take, tuple, types::CompleteStr};
 
 define!(
     adverb:
@@ -29,7 +27,7 @@ define!(
     [(Token::Articles(Articles::The), Priority(2)), "the", Dist(0)]
 );
 
-define_num!(number, (Token::Number, Priority(3)), 0, 12);
+define_num!(number: (Token::Number, Priority(3)), 0, 12);
 
 combine!(number_or_intword => int_word | number);
 
@@ -87,17 +85,16 @@ named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<CompleteStr<'a>>,
             tuple!(apply!(when, exact_match), apply!(article, true),
                    apply!(number_or_intword, exact_match), apply!(time_interval, exact_match)) |
             // e.g.: in five months
-            tuple!(apply!(when, exact_match), call!(stub),
+            tuple!(apply!(when, exact_match), stub,
                    apply!(number_or_intword, exact_match), apply!(time_interval, exact_match)) |
             // e.g.: in the few days
             tuple!(apply!(when, exact_match), apply!(article, true),
                    apply!(adverb, exact_match), apply!(time_interval, exact_match)) |
             // e.g.: in few days
-            tuple!(apply!(when, exact_match), call!(stub),
+            tuple!(apply!(when, exact_match), stub,
                    apply!(adverb, exact_match), apply!(time_interval, exact_match)) |
             // e.g.: in a month, in a second, etc.
-            tuple!(apply!(when, exact_match), call!(stub), call!(stub),
-                   apply!(time_interval, exact_match))
+            tuple!(apply!(when, exact_match), stub, stub, apply!(time_interval, exact_match))
         )
     )
 );
@@ -105,7 +102,6 @@ named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<CompleteStr<'a>>,
 make_interpreter!(indices[0, 1, 2, 3]);
 
 fn make_time(res: &mut RuleResult, local: DateTime<Local>, input: &str) {
-
     let mut half = false;
     let mut num: i64 = 1;
 
@@ -124,64 +120,59 @@ fn make_time(res: &mut RuleResult, local: DateTime<Local>, input: &str) {
     match token.unwrap_or(&Token::None) {
         Token::TimeInterval(TimeInterval::Second) => {
             res.unwrap_mut().duration = num;
-        },
+        }
         Token::TimeInterval(TimeInterval::Minute) => {
             res.unwrap_mut().duration = if half {
                 30 * consts::SECOND as i64
             } else {
                 num * consts::MINUTE as i64
             }
-        },
+        }
         Token::TimeInterval(TimeInterval::Hour) => {
             res.unwrap_mut().duration = if half {
                 30 * consts::MINUTE as i64
             } else {
                 num * consts::HOUR as i64
             }
-        },
+        }
         Token::TimeInterval(TimeInterval::Day) => {
             res.unwrap_mut().duration = if half {
                 12 * consts::HOUR as i64
             } else {
                 num * consts::DAY as i64
             }
-        },
+        }
         Token::TimeInterval(TimeInterval::Week) => {
             res.unwrap_mut().duration = if half {
                 7 * 12 * consts::HOUR as i64
             } else {
                 num * consts::WEEK as i64
             }
-        },
+        }
         Token::TimeInterval(TimeInterval::Month) => {
             if half {
                 res.unwrap_mut().duration = 14 * consts::DAY as i64;
             } else {
-                res.unwrap_mut().month =
-                    ((local.month() as i64 + num) % 12) as usize;
+                res.unwrap_mut().month = ((local.month() as i64 + num) % 12) as usize;
             }
-        },
+        }
         Token::TimeInterval(TimeInterval::Year) => {
             if half {
-                res.unwrap_mut().month =
-                    ((local.month() as i64 + 6) % 12) as usize;
+                res.unwrap_mut().month = ((local.month() as i64 + 6) % 12) as usize;
             } else {
-                res.unwrap_mut().year =
-                    (local.year() as i64 + num) as usize;
+                res.unwrap_mut().year = (local.year() as i64 + num) as usize;
             }
-        },
+        }
         _ => (),
     }
-
 }
-
 
 #[cfg(test)]
 mod tests {
-    use chrono::prelude::*;
-    use crate::{MatchBounds, consts};
     use super::interpret;
     use crate::errors::DateTimeError::AmbiguousTime;
+    use crate::{consts, MatchBounds};
+    use chrono::prelude::*;
 
     fn fixed_time() -> DateTime<Local> {
         // 2019 1st January, Tuesday
@@ -205,10 +196,18 @@ mod tests {
         let result = interpret("in 5 minutes I will go home", false, fixed_time());
         assert_eq!(result.context.unwrap().duration, 5 * consts::MINUTE as i64);
 
-        let result = interpret("we have to do something within 10 days.", false, fixed_time());
+        let result = interpret(
+            "we have to do something within 10 days.",
+            false,
+            fixed_time(),
+        );
         assert_eq!(result.context.unwrap().duration, 10 * consts::DAY as i64);
 
-        let result = interpret("we have to do something within five days.", false, fixed_time());
+        let result = interpret(
+            "we have to do something within five days.",
+            false,
+            fixed_time(),
+        );
         assert_eq!(result.context.unwrap().duration, 5 * consts::DAY as i64);
 
         let result = interpret("in a half year", false, fixed_time());
@@ -216,6 +215,5 @@ mod tests {
 
         let result = interpret("drop me a line in a half hour", false, fixed_time());
         assert_eq!(result.context.unwrap().duration, 30 * consts::MINUTE as i64);
-
     }
 }

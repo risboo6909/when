@@ -79,7 +79,6 @@ pub enum Ordinals {
     Eighteenth,
     Nineteenth,
     Twentieth,
-
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -110,6 +109,7 @@ pub enum Articles {
 pub enum Token {
     None,
     Week,
+    Char, // stands for any character
     Articles(Articles),
     Weekday(Weekday),
     When(When),
@@ -130,6 +130,5 @@ pub struct Priority(pub isize);
 pub enum PToken {
     None,
     Stub,
-    // PToken consists of Token and priority of type isize
     PToken(Token, Priority),
 }

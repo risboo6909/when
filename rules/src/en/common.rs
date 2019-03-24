@@ -1,4 +1,4 @@
-use crate::{Dist, TokenDesc, tokens::{Token, IntWord, Priority}};
+use crate::{Dist, TokenDesc, tokens::{Token, IntWord, Priority, When}};
 
 use nom::{alt, call, apply, named_args, many_till, tuple, take, types::CompleteStr};
 

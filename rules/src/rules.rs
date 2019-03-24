@@ -1,8 +1,8 @@
-use nom::{types::CompleteStr, IResult};
 use chrono::prelude::{DateTime, Local};
+use nom::{types::CompleteStr, IResult};
 
-use crate::tokens::{Token, PToken, Priority};
 use crate::errors::DateTimeError;
+use crate::tokens::{PToken, Priority, Token};
 use crate::Dist;
 
 pub type MyResult<'a> = IResult<CompleteStr<'a>, TokenDesc>;
@@ -27,10 +27,7 @@ pub struct MatchBounds {
 
 impl MatchBounds {
     pub fn new(start_idx: usize, end_idx: usize) -> Self {
-        Self {
-            start_idx,
-            end_idx,
-        }
+        Self { start_idx, end_idx }
     }
 }
 
@@ -48,39 +45,33 @@ pub struct Context {
 
 #[derive(Debug)]
 pub struct RuleResult<'a> {
-
     pub tail: &'a str,
     pub tokens: Option<Vec<PToken>>,
     pub bounds: Option<MatchBounds>,
 
     pub context: Result<Context, DateTimeError>,
-
 }
 
 pub(crate) type FnRule = for<'r> fn(&'r str, bool, DateTime<Local>) -> RuleResult<'r>;
 
 impl<'a> RuleResult<'a> {
-
     pub fn new() -> Self {
-
         Self {
             tail: "",
             tokens: None,
             bounds: None,
             context: Ok(Default::default()),
         }
-
     }
 
     pub fn set_tokens(&mut self, tokens: Vec<TokenDesc>) -> &mut Self {
-
         // remove stub tokens
         let mut filtered_tokens: Vec<PToken> = tokens
             .iter()
             .filter_map(|item| {
                 let token = item.token.clone();
                 match token {
-                    PToken::Stub | PToken:: None => None,
+                    PToken::Stub | PToken::None => None,
                     _ => Some(token),
                 }
             })
@@ -91,26 +82,23 @@ impl<'a> RuleResult<'a> {
         }
 
         self
-
     }
 
     fn filter_by_priority(&self, priority: Priority) -> Vec<&Token> {
         match &self.tokens {
-            Some(tokens) => {
-                tokens.iter().
-                filter_map(|t| {
-                    match t {
-                        PToken::PToken(token, p) => {
-                            if *p == priority {
-                                Some(token)
-                            } else {
-                                None
-                            }
-                        },
-                        _ => unreachable!(),
+            Some(tokens) => tokens
+                .iter()
+                .filter_map(|t| match t {
+                    PToken::PToken(token, p) => {
+                        if *p == priority {
+                            Some(token)
+                        } else {
+                            None
+                        }
                     }
-                }).collect()
-            },
+                    _ => unreachable!(),
+                })
+                .collect(),
             None => Vec::new(),
         }
     }
@@ -118,9 +106,9 @@ impl<'a> RuleResult<'a> {
     pub fn token_by_priority(&self, priority: Priority) -> Option<&Token> {
         let res = self.filter_by_priority(priority);
         if !res.is_empty() {
-            return Some(res[0])
+            return Some(res[0]);
         }
-        return None
+        return None;
     }
 
     pub fn set_tail(&mut self, tail: &'a str) -> &mut Self {
@@ -154,7 +142,6 @@ impl<'a> RuleResult<'a> {
     pub fn unwrap_mut(&mut self) -> &mut Context {
         self.context.as_mut().unwrap()
     }
-
 }
 
 #[derive(Debug)]
@@ -164,8 +151,11 @@ pub struct MatchResult {
 }
 
 impl MatchResult {
-    pub fn new(time_shift: Result<Context, DateTimeError>, start_idx: usize,
-               end_idx: usize) -> Self {
+    pub fn new(
+        time_shift: Result<Context, DateTimeError>,
+        start_idx: usize,
+        end_idx: usize,
+    ) -> Self {
         Self {
             bounds: MatchBounds::new(start_idx, end_idx),
             time_shift,
