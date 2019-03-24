@@ -2,17 +2,11 @@ use time::Duration;
 use chrono::prelude::*;
 
 use crate::tokens::{Token, When, Priority, Pronouns, TimeOfDay};
-use crate::{best_fit, recognize_word, rules::RuleResult, stub, TokenDesc, Dist};
-use crate::rules::MatchBounds;
+use crate::{rules::{RuleResult, MatchBounds}, stub, TokenDesc, Dist, consts};
 
 use nom::{
     alt, apply, call, many_till, named_args, take, tuple, types::CompleteStr
 };
-
-define!(
-    last:
-    [(Token::When(When::Last), Priority(0)), "last", Dist(2)]
-);
 
 define!(
     now:
@@ -20,78 +14,131 @@ define!(
 );
 
 define!(
+    last:
+    [(Token::When(When::Last), Priority(1)), "last", Dist(1)]
+);
+
+define!(
+    this:
+    [(Token::Pronouns(Pronouns::This), Priority(1)), "this", Dist(1)]
+);
+
+combine!(last_this => last | this);
+
+define!(
     today:
-    [(Token::When(When::Today), Priority(0)), "today", Dist(1)]
+    [(Token::When(When::Today), Priority(1)), "today", Dist(1)]
 );
 
 define!(
     tonight:
-    [(Token::When(When::Tonight), Priority(0)), "tonight", Dist(2)]
+    [(Token::When(When::Tonight), Priority(1)), "tonight", Dist(2)]
 );
 
 define!(
     tomorrow:
-    [(Token::When(When::Tomorrow), Priority(0)), "tomorrow", Dist(2)] |
-    [(Token::When(When::Tomorrow), Priority(0)), "tmr", Dist(0)]
+    [(Token::When(When::Tomorrow), Priority(1)), "tomorrow", Dist(2)] |
+    [(Token::When(When::Tomorrow), Priority(1)), "tmr", Dist(0)]
 );
 
 define!(
     yesterday:
-    [(Token::When(When::Yesterday), Priority(0)), "yesterday", Dist(2)]
+    [(Token::When(When::Yesterday), Priority(1)), "yesterday", Dist(2)]
 );
 
 combine!(when => today | tonight | yesterday | tomorrow);
 
 define!(
-    this:
-    [(Token::Pronouns(Pronouns::This), Priority(0)), "this", Dist(1)]
-);
-
-define!(
     night:
-    [(Token::TimeOfDay(TimeOfDay::Night), Priority(0)), "night", Dist(1)]
+    [(Token::TimeOfDay(TimeOfDay::Night), Priority(2)), "night", Dist(1)]
 );
 
 define!(
     morning:
-    [(Token::TimeOfDay(TimeOfDay::Morning), Priority(0)), "morning", Dist(2)]
+    [(Token::TimeOfDay(TimeOfDay::Morning), Priority(2)), "morning", Dist(2)]
 );
 
 define!(
     evening:
-    [(Token::TimeOfDay(TimeOfDay::Evening), Priority(0)), "evening", Dist(2)]
+    [(Token::TimeOfDay(TimeOfDay::Evening), Priority(2)), "evening", Dist(2)]
 );
 
 define!(
     noon:
-    [(Token::TimeOfDay(TimeOfDay::Noon), Priority(0)), "noon", Dist(1)]
+    [(Token::TimeOfDay(TimeOfDay::Noon), Priority(2)), "noon", Dist(1)]
 );
 
 combine!(time_of_day => night | morning | evening | noon);
 
 named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<CompleteStr<'a>>,
-                             ( TokenDesc, TokenDesc, TokenDesc ) )>,
+                             ( TokenDesc, TokenDesc, ) )>,
     many_till!(take!(1),
         alt!(
-            tuple!(apply!(when, exact_match), apply!(this, exact_match),
-                   apply!(time_of_day, exact_match)) |
-            tuple!(apply!(when, exact_match), apply!(time_of_day, exact_match), call!(stub)) |
-            tuple!(apply!(this, exact_match), apply!(time_of_day, exact_match), call!(stub)) |
-            tuple!(apply!(when, exact_match), call!(stub), call!(stub)) |
-            tuple!(apply!(now, exact_match), call!(stub), call!(stub))
+            // last night, this morning, etc.
+            tuple!(apply!(last_this, exact_match), apply!(time_of_day, exact_match)) |
+            // tomorrow evening, today morning, etc.
+            tuple!(apply!(when, exact_match), apply!(time_of_day, exact_match)) |
+            // today, tomorrow, yesyerday, etc.
+            tuple!(apply!(when, exact_match), call!(stub)) |
+            // now
+            tuple!(apply!(now, exact_match), call!(stub))
         )
     )
 );
 
-make_interpreter!(indices[0, 1, 2]);
+make_interpreter!(indices[0, 1]);
 
-fn make_time(res: &mut RuleResult, local: DateTime<Local>, input: &str) {}
+fn make_time(res: &mut RuleResult, local: DateTime<Local>, input: &str) {
+
+    let token = res.token_by_priority(Priority(1));
+
+    match token.unwrap_or(&Token::None) {
+        Token::When(When::Last) => {
+            res.unwrap_mut().hour = 23;
+            res.unwrap_mut().duration -= 24 * consts::HOUR as i64;
+        },
+        Token::When(When::Tomorrow) => {
+            res.unwrap_mut().duration += 24 * consts::HOUR as i64;
+        },
+        Token::When(When::Yesterday) => {
+            res.unwrap_mut().duration -= 24 * consts::HOUR as i64;
+        },
+        Token::When(When::Tonight) => {
+            res.unwrap_mut().hour = 23;
+            res.unwrap_mut().minute = 0;
+        },
+        _ => (),
+    }
+
+    let token = res.token_by_priority(Priority(2));
+
+    match token.unwrap_or(&Token::None) {
+        Token::TimeOfDay(TimeOfDay::Morning) => {
+            res.unwrap_mut().hour = 8;
+            res.unwrap_mut().minute = 0;
+        },
+        Token::TimeOfDay(TimeOfDay::Noon) => {
+            res.unwrap_mut().hour = 12;
+            res.unwrap_mut().minute = 0;
+        },
+        Token::TimeOfDay(TimeOfDay::Evening) => {
+            res.unwrap_mut().hour = 18;
+            res.unwrap_mut().minute = 0;
+        },
+        Token::TimeOfDay(TimeOfDay::Night) => {
+            res.unwrap_mut().hour = 23;
+            res.unwrap_mut().minute = 0;
+        },
+        _ => (),
+    }
+
+}
 
 #[cfg(test)]
 mod tests {
     use chrono::prelude::*;
     use crate::tokens::{Token, When, Priority, Pronouns, TimeOfDay};
-    use crate::MatchBounds;
+    use crate::{consts, MatchBounds};
     use super::interpret;
 
     fn fixed_time() -> DateTime<Local> {
@@ -100,6 +147,41 @@ mod tests {
 
     #[test]
     fn test_casual_date() {
+        let result = interpret("The deadline is now, ok", false, fixed_time());
+        assert_eq!(result.bounds, Some(MatchBounds { start_idx: 16, end_idx: 18 }));
+        assert_eq!(result.unwrap().duration, 0);
+
+        let result = interpret("The deadline is today", false, fixed_time());
+        assert_eq!(result.bounds, Some(MatchBounds { start_idx: 16, end_idx: 20 }));
+        assert_eq!(result.unwrap().duration, 0);
+
+        let result = interpret("The deadline is tonight", false, fixed_time());
+        assert_eq!(result.bounds, Some(MatchBounds { start_idx: 16, end_idx: 22 }));
+        assert_eq!(result.unwrap().hour, 23);
+        assert_eq!(result.unwrap().minute, 0);
+
+        let result = interpret("The deadline is tomorrow", false, fixed_time());
+        assert_eq!(result.bounds, Some(MatchBounds { start_idx: 16, end_idx: 23 }));
+        assert_eq!(result.unwrap().duration, 24 * consts::HOUR as i64);
+
+        let result = interpret("The deadline was yesterday", false, fixed_time());
+        assert_eq!(result.bounds, Some(MatchBounds { start_idx: 17, end_idx: 25 }));
+        assert_eq!(result.unwrap().duration, -24 * consts::HOUR as i64);
+
+        let result = interpret("Please call me tomorrow evening", false, fixed_time());
+        assert_eq!(result.bounds, Some(MatchBounds { start_idx: 15, end_idx: 30 }));
+        assert_eq!(result.unwrap().duration, 24 * consts::HOUR as i64);
+        assert_eq!(result.unwrap().hour, 18);
+
+        let result = interpret("He told me that yesterday morning", false, fixed_time());
+        assert_eq!(result.bounds, Some(MatchBounds { start_idx: 16, end_idx: 32 }));
+        assert_eq!(result.unwrap().duration, -24 * consts::HOUR as i64);
+        assert_eq!(result.unwrap().hour, 8);
+
+        let result = interpret("Last night I fell asleep", false, fixed_time());
+        assert_eq!(result.bounds, Some(MatchBounds { start_idx: 0, end_idx: 9 }));
+        assert_eq!(result.unwrap().duration, -24 * consts::HOUR as i64);
+        assert_eq!(result.unwrap().hour, 23);
 
     }
 }

@@ -94,7 +94,7 @@ impl<'a> RuleResult<'a> {
 
     }
 
-    pub fn filter_by_priority(&self, priority: Priority) -> Vec<&Token> {
+    fn filter_by_priority(&self, priority: Priority) -> Vec<&Token> {
         match &self.tokens {
             Some(tokens) => {
                 tokens.iter().
