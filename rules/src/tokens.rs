@@ -29,8 +29,12 @@ pub enum When {
     Tonight,
     Tomorrow,
     Yesterday,
-    AM,
-    PM,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum AmPm {
+    Am,
+    Pm,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -107,12 +111,12 @@ pub enum Articles {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Token {
-    None,
     Week,
     Char, // stands for any character
     Articles(Articles),
     Weekday(Weekday),
     When(When),
+    AmPm(AmPm),
     Number(usize),
     IntWord(IntWord),
     TimeInterval(TimeInterval),
@@ -128,7 +132,6 @@ pub struct Priority(pub isize);
 // being parsed first
 #[derive(Debug, Clone, PartialEq)]
 pub enum PToken {
-    None,
     Stub,
     PToken(Token, Priority),
 }

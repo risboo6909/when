@@ -52,10 +52,10 @@ named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<CompleteStr<'a>>,
 
 make_interpreter!(indices[0, 1]);
 
-fn make_time(res: &mut RuleResult, local: DateTime<Local>, input: &str) {
+fn make_time(res: &mut RuleResult, _local: DateTime<Local>, _input: &str) {
     let token = res.token_by_priority(Priority(1));
 
-    match token.unwrap_or(&Token::None) {
+    token.map_or((), |t| match t {
         Token::When(When::Last) => {
             res.unwrap_mut().hour = 23;
             res.unwrap_mut().duration -= 24 * consts::HOUR as i64;
@@ -71,11 +71,11 @@ fn make_time(res: &mut RuleResult, local: DateTime<Local>, input: &str) {
             res.unwrap_mut().minute = 0;
         }
         _ => (),
-    }
+    });
 
     let token = res.token_by_priority(Priority(2));
 
-    match token.unwrap_or(&Token::None) {
+    token.map_or((), |t| match t {
         Token::TimeOfDay(TimeOfDay::Morning) => {
             res.unwrap_mut().hour = 8;
             res.unwrap_mut().minute = 0;
@@ -93,7 +93,7 @@ fn make_time(res: &mut RuleResult, local: DateTime<Local>, input: &str) {
             res.unwrap_mut().minute = 0;
         }
         _ => (),
-    }
+    });
 }
 
 #[cfg(test)]

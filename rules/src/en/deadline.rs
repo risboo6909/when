@@ -101,23 +101,23 @@ named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<CompleteStr<'a>>,
 
 make_interpreter!(indices[0, 1, 2, 3]);
 
-fn make_time(res: &mut RuleResult, local: DateTime<Local>, input: &str) {
+fn make_time(res: &mut RuleResult, local: DateTime<Local>, _input: &str) {
     let mut half = false;
     let mut num: i64 = 1;
 
     let token = res.token_by_priority(Priority(0));
 
-    match token.unwrap_or(&Token::None) {
+    token.map_or((), |t| match t {
         Token::Adverbs(Adverbs::Few) => num = 3,
         Token::Adverbs(Adverbs::Half) => half = true,
         _ => (),
-    }
+    });
 
     let num = match_num(res.token_by_priority(Priority(3))).unwrap_or(num);
 
     let token = res.token_by_priority(Priority(4));
 
-    match token.unwrap_or(&Token::None) {
+    token.map_or((), |t| match t {
         Token::TimeInterval(TimeInterval::Second) => {
             res.unwrap_mut().duration = num;
         }
@@ -164,7 +164,7 @@ fn make_time(res: &mut RuleResult, local: DateTime<Local>, input: &str) {
             }
         }
         _ => (),
-    }
+    });
 }
 
 #[cfg(test)]

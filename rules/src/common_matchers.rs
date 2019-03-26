@@ -1,7 +1,7 @@
-use crate::tokens::{Token, IntWord};
+use crate::tokens::{IntWord, Token};
 
-pub(crate) fn match_num(token: Option<&Token>) -> Option<i64> {
-    match token.unwrap_or(&Token::None) {
+pub(crate) fn match_num(token: Option<Token>) -> Option<i64> {
+    token.map_or(None, |t| match t {
         Token::IntWord(IntWord::One) => Some(1),
         Token::IntWord(IntWord::Two) => Some(2),
         Token::IntWord(IntWord::Three) => Some(3),
@@ -14,7 +14,7 @@ pub(crate) fn match_num(token: Option<&Token>) -> Option<i64> {
         Token::IntWord(IntWord::Ten) => Some(10),
         Token::IntWord(IntWord::Eleven) => Some(11),
         Token::IntWord(IntWord::Twelve) => Some(12),
-        Token::Number(n) => Some(*n as i64),
+        Token::Number(n) => Some(n as i64),
         _ => None,
-    }
+    })
 }

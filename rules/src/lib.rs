@@ -264,7 +264,7 @@ fn best_fit<'a>(
 ) -> MyResult<'a> {
     let mut min_dist = Dist(std::usize::MAX);
 
-    let mut selected_token = crate::tokens::PToken::None;
+    let mut selected_token = crate::tokens::PToken::Stub;
     let mut selected_count = 0;
     let mut selected_tail = CompleteStr("");
 
@@ -314,7 +314,7 @@ pub(crate) fn apply_generic(
             match rule(input, exact_match, Local::now()) {
                 RuleResult {
                     tail,
-                    tokens,
+                    tokens: _,
                     bounds: Some(bounds),
                     context,
                 } => {

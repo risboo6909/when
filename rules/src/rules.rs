@@ -66,12 +66,12 @@ impl<'a> RuleResult<'a> {
 
     pub fn set_tokens(&mut self, tokens: Vec<TokenDesc>) -> &mut Self {
         // remove stub tokens
-        let mut filtered_tokens: Vec<PToken> = tokens
+        let filtered_tokens: Vec<PToken> = tokens
             .iter()
             .filter_map(|item| {
                 let token = item.token.clone();
                 match token {
-                    PToken::Stub | PToken::None => None,
+                    PToken::Stub => None,
                     _ => Some(token),
                 }
             })
@@ -103,10 +103,10 @@ impl<'a> RuleResult<'a> {
         }
     }
 
-    pub fn token_by_priority(&self, priority: Priority) -> Option<&Token> {
+    pub fn token_by_priority(&self, priority: Priority) -> Option<Token> {
         let res = self.filter_by_priority(priority);
         if !res.is_empty() {
-            return Some(res[0]);
+            return Some(res[0].clone());
         }
         return None;
     }
@@ -122,17 +122,15 @@ impl<'a> RuleResult<'a> {
     }
 
     pub fn get_offset(&self) -> i64 {
-        match &self.context {
-            Ok(x) => x.duration,
-            Err(_) => 0,
-        }
+        self.context.as_ref().map(|s| s.duration).unwrap_or(0)
     }
 
     pub fn get_hours(&self) -> usize {
-        match &self.context {
-            Ok(x) => x.hour,
-            Err(_) => 0,
-        }
+        self.context.as_ref().map(|s| s.hour).unwrap_or(0)
+    }
+
+    pub fn get_minutes(&self) -> usize {
+        self.context.as_ref().map(|s| s.minute).unwrap_or(0)
     }
 
     pub fn unwrap(&self) -> &Context {

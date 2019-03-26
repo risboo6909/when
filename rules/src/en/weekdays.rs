@@ -83,7 +83,7 @@ fn make_time(res: &mut RuleResult, local: DateTime<Local>, input: &str) {
 
     let token = res.token_by_priority(Priority(0));
 
-    match token.unwrap_or(&Token::None) {
+    token.map_or((), |t| match t {
         Token::Weekday(Day::Monday) => {
             day = 0;
         }
@@ -106,11 +106,11 @@ fn make_time(res: &mut RuleResult, local: DateTime<Local>, input: &str) {
             day = 6;
         }
         _ => (),
-    }
+    });
 
     let token = res.token_by_priority(Priority(1));
 
-    match token.unwrap_or(&Token::None) {
+    token.map_or((), |t| match t {
         Token::When(When::Next) => {
             let delta = day - local.weekday() as i64;
             if delta > 0 {
@@ -129,9 +129,8 @@ fn make_time(res: &mut RuleResult, local: DateTime<Local>, input: &str) {
         }
         Token::When(When::This) => {
             let weekday_i64 = local.weekday() as i64;
-            let delta = day - weekday_i64;
             if weekday_i64 < day {
-                offset = Duration::days(delta).num_seconds();
+                offset = Duration::days(day - weekday_i64).num_seconds();
             } else if weekday_i64 > day {
                 // what did user mean? previous week day or this week day or next
                 // week day? we don't know!
@@ -143,7 +142,7 @@ fn make_time(res: &mut RuleResult, local: DateTime<Local>, input: &str) {
             }
         }
         _ => (),
-    }
+    });
 
     if res.context.is_ok() {
         res.unwrap_mut().duration = offset;

@@ -1,26 +1,27 @@
 use chrono::prelude::*;
 
-use crate::tokens::{Priority, Token, When};
+use crate::tokens::{AmPm, Priority, Token, When};
 use crate::{consts, rules::RuleResult, stub, Dist, TokenDesc};
 use nom::{alt, apply, call, many_till, named_args, take, tuple, types::CompleteStr};
 
 define_num!(hours: (Token::Number, Priority(0)), 0, 24);
-define_num!(minutes: (Token::Number, Priority(0)), 0, 60);
 
 define_char!(colon: Priority(1), ':');
 
+define_num!(minutes: (Token::Number, Priority(2)), 0, 60);
+
 define!(
     am:
-    [(Token::When(When::AM), Priority(3)), "a.m.", Dist(0)] |
-    [(Token::When(When::AM), Priority(3)), "a.", Dist(0)] |
-    [(Token::When(When::AM), Priority(3)), "am", Dist(0)]
+    [(Token::AmPm(AmPm::Am), Priority(3)), "a.m.", Dist(0)] |
+    [(Token::AmPm(AmPm::Am), Priority(3)), "a.", Dist(0)] |
+    [(Token::AmPm(AmPm::Am), Priority(3)), "am", Dist(0)]
 );
 
 define!(
     pm:
-    [(Token::When(When::PM), Priority(3)), "p.m.", Dist(0)] |
-    [(Token::When(When::PM), Priority(3)), "p.", Dist(0)] |
-    [(Token::When(When::PM), Priority(3)), "pm", Dist(0)]
+    [(Token::AmPm(AmPm::Pm), Priority(3)), "p.m.", Dist(0)] |
+    [(Token::AmPm(AmPm::Pm), Priority(3)), "p.", Dist(0)] |
+    [(Token::AmPm(AmPm::Pm), Priority(3)), "pm", Dist(0)]
 );
 
 combine!(am_pm => am | pm);
@@ -39,22 +40,26 @@ named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<CompleteStr<'a>>,
 
 fn make_time(res: &mut RuleResult, _local: DateTime<Local>, _input: &str) {
     let token = res.token_by_priority(Priority(0));
-
     let mut hrs = 0;
 
     if let Some(Token::Number(n)) = token {
-        hrs = *n;
+        hrs = n;
+    }
+
+    let token = res.token_by_priority(Priority(2));
+    if let Some(Token::Number(n)) = token {
+        res.unwrap_mut().minute = n;
     }
 
     let token = res.token_by_priority(Priority(3));
 
-    match token.unwrap_or(&Token::None) {
-        Token::When(When::PM) => {
+    token.map_or((), |t| match t {
+        Token::AmPm(AmPm::Pm) => {
             hrs += 12;
         }
-        Token::When(When::AM) => {}
+        Token::AmPm(AmPm::Am) => {}
         _ => (),
-    }
+    });
 
     res.unwrap_mut().hour = hrs * consts::HOUR;
 }
@@ -148,6 +153,7 @@ mod tests {
                 end_idx: 5
             })
         );
+        // assert_eq!(result.get_hours(), 5);
     }
 
 }
