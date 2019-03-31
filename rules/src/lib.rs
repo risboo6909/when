@@ -83,29 +83,20 @@ macro_rules! define_char {
 
 /// Macro simplifies bounded number parsers definition.
 ///
-/// Examples:
+/// Example:
 ///
-/// Let's define Hour to be any number from 0 to 24:
+/// define_num!(hour, (Token::Hour, 0));
 ///
-/// define_num!(hour, (Token::Hour, 0), 0, 24);
-///
-/// Define minutes:
-///
-/// define_num!(hour, (Token::Minute, 0), 0, 60);
 macro_rules! define_num {
-    ( $func_name: ident: ($ctor: expr, $p: expr), $lower_bound: expr, $upper_bound: expr ) => {
+    ( $func_name: ident: ($ctor: expr, $p: expr) ) => {
         fn $func_name(input: CompleteStr, _: bool) -> crate::MyResult {
-            let mut err_code = crate::my_errors::UNKNOWN;
             if let Ok((tail, n)) = crate::recognize_uint(input) {
-                if n >= $lower_bound && n <= $upper_bound {
-                    return Ok((
-                        tail,
-                        TokenDesc::new(crate::tokens::PToken::PToken($ctor(n), $p), crate::Dist(0)),
-                    ));
-                }
-                err_code = crate::my_errors::OUT_OF_BOUNDS;
+                return Ok((
+                    tail,
+                    TokenDesc::new(crate::tokens::PToken::PToken($ctor(n), $p), crate::Dist(0)),
+                ));
             }
-            return crate::wrap_error(input, err_code);
+            crate::wrap_error(input, crate::my_errors::UNKNOWN)
         }
     };
 }
@@ -132,30 +123,32 @@ macro_rules! make_interpreter {
 
         use tuple::TupleElements;
 
-        pub(crate) fn interpret(input: &str, exact_match: bool, local_time: DateTime<Local>) ->
-
-            RuleResult {
+        pub(crate) fn interpret(input: &str, exact_match: bool, local_time: DateTime<Local>) -> RuleResult {
 
             let mut res = RuleResult::new();
 
-            if let Ok((tail, (skipped, tt))) = parse(CompleteStr(input), exact_match) {
+            match parse(CompleteStr(input), exact_match) {
+                Ok((tail, (skipped, tt))) => {
+                    let bounds = crate::match_bounds(skipped, input, tail);
 
-                let bounds = crate::match_bounds(skipped, input, tail);
+                    res.set_bounds(Some(bounds))
+                       .set_tokens(vec![$(tt.get($n).cloned().unwrap()),*])
+                       .set_tail(*tail);
 
-                res.set_bounds(Some(bounds))
-                   .set_tokens(vec![$(tt.get($n).cloned().unwrap()),*])
-                   .set_tail(*tail);
-
-                make_time(&mut res, local_time, input);
-
-            } else {
-                res.set_tail(input);
+                    make_time(&mut res, local_time, input);
+                },
+                Err(nom::Err::Error(nom::Context::Code(ref input, nom::ErrorKind::ManyTill))) => {
+                    res.set_tail(input);
+                },
+                _ => unreachable!(),
             }
 
             res
+
         }
 
     );
+
 }
 
 pub mod en;
@@ -235,10 +228,6 @@ fn recognize_word<'a>(
     token: crate::tokens::PToken,
 ) -> MyResult<'a> {
     if let Ok((tail, word)) = tokenize_word(input) {
-        if *word == "" {
-            // skip empty strings
-            return wrap_error(input, my_errors::EMPTY);
-        }
         if max_dist == crate::Dist(0) {
             // when max_dist is 0 perform just plain string comparison
             if *word == *pattern {
@@ -283,8 +272,6 @@ fn best_fit<'a>(
 
     if selected_count == 1 {
         return Ok((selected_tail, TokenDesc::new(selected_token, min_dist)));
-    } else if selected_count > 1 {
-        return wrap_error(input, my_errors::AMBIGUOUS);
     }
 
     wrap_error(input, my_errors::UNKNOWN)

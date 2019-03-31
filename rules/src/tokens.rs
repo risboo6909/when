@@ -111,8 +111,8 @@ pub enum Articles {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Token {
-    Week,
     Char, // stands for any character
+    Week,
     Articles(Articles),
     Weekday(Weekday),
     When(When),

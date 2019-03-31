@@ -144,9 +144,7 @@ fn make_time(res: &mut RuleResult, local: DateTime<Local>, input: &str) {
         _ => (),
     });
 
-    if res.context.is_ok() {
-        res.unwrap_mut().duration = offset;
-    }
+    res.set_duration(offset);
 }
 
 make_interpreter!(indices[0, 1, 2]);

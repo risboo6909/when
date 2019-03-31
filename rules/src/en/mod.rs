@@ -1,9 +1,7 @@
-mod common;
-
-mod weekdays;
 mod casual_date_time;
-mod time;
 mod deadline;
+mod time;
+mod weekdays;
 
 use crate::apply_generic;
 use crate::rules::{FnRule, MatchResult};

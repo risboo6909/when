@@ -121,6 +121,12 @@ impl<'a> RuleResult<'a> {
         self
     }
 
+    pub fn set_duration(&mut self, duration: i64) {
+        if self.context.is_ok() {
+            self.context.as_mut().unwrap().duration = duration;
+        }
+    }
+
     pub fn get_offset(&self) -> i64 {
         self.context.as_ref().map(|s| s.duration).unwrap_or(0)
     }
