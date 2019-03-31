@@ -1,20 +1,21 @@
 use crate::tokens::{IntWord, Token};
+use num_traits::{FromPrimitive, Num};
 
-pub(crate) fn match_num(token: Option<Token>) -> Option<i64> {
+pub(crate) fn match_num<T: Num + FromPrimitive>(token: Option<Token>) -> Option<T> {
     token.map_or(None, |t| match t {
-        Token::IntWord(IntWord::One) => Some(1),
-        Token::IntWord(IntWord::Two) => Some(2),
-        Token::IntWord(IntWord::Three) => Some(3),
-        Token::IntWord(IntWord::Four) => Some(4),
-        Token::IntWord(IntWord::Five) => Some(5),
-        Token::IntWord(IntWord::Six) => Some(6),
-        Token::IntWord(IntWord::Seven) => Some(7),
-        Token::IntWord(IntWord::Eight) => Some(8),
-        Token::IntWord(IntWord::Nine) => Some(9),
-        Token::IntWord(IntWord::Ten) => Some(10),
-        Token::IntWord(IntWord::Eleven) => Some(11),
-        Token::IntWord(IntWord::Twelve) => Some(12),
-        Token::Number(n) => Some(n as i64),
+        Token::IntWord(IntWord::One) => Some(T::one()),
+        Token::IntWord(IntWord::Two) => Some(T::from_u32(2).unwrap()),
+        Token::IntWord(IntWord::Three) => Some(T::from_u32(3).unwrap()),
+        Token::IntWord(IntWord::Four) => Some(T::from_u32(4).unwrap()),
+        Token::IntWord(IntWord::Five) => Some(T::from_u32(5).unwrap()),
+        Token::IntWord(IntWord::Six) => Some(T::from_u32(6).unwrap()),
+        Token::IntWord(IntWord::Seven) => Some(T::from_u32(7).unwrap()),
+        Token::IntWord(IntWord::Eight) => Some(T::from_u32(8).unwrap()),
+        Token::IntWord(IntWord::Nine) => Some(T::from_u32(9).unwrap()),
+        Token::IntWord(IntWord::Ten) => Some(T::from_u32(10).unwrap()),
+        Token::IntWord(IntWord::Eleven) => Some(T::from_u32(11).unwrap()),
+        Token::IntWord(IntWord::Twelve) => Some(T::from_u32(12).unwrap()),
+        Token::Number(n) => Some(T::from_usize(n).unwrap()),
         _ => None,
     })
 }

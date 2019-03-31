@@ -117,7 +117,7 @@ make_interpreter!(indices[0, 1, 2, 3]);
 
 fn make_time(res: &mut RuleResult, local: DateTime<Local>, _input: &str) {
     let mut half = false;
-    let mut num: i64 = 1;
+    let mut num: u32 = 1;
 
     let token = res.token_by_priority(Priority(0));
 
@@ -136,37 +136,37 @@ fn make_time(res: &mut RuleResult, local: DateTime<Local>, _input: &str) {
             res.set_duration(num);
         }
         Token::TimeInterval(TimeInterval::Minute) => res.set_duration(if half {
-            30 * consts::SECOND as i64
+            30 * consts::SECOND
         } else {
-            num * consts::MINUTE as i64
+            num * consts::MINUTE
         }),
         Token::TimeInterval(TimeInterval::Hour) => res.set_duration(if half {
-            30 * consts::MINUTE as i64
+            30 * consts::MINUTE
         } else {
-            num * consts::HOUR as i64
+            num * consts::HOUR
         }),
         Token::TimeInterval(TimeInterval::Day) => res.set_duration(if half {
-            12 * consts::HOUR as i64
+            12 * consts::HOUR
         } else {
-            num * consts::DAY as i64
+            num * consts::DAY
         }),
         Token::TimeInterval(TimeInterval::Week) => res.set_duration(if half {
-            7 * 12 * consts::HOUR as i64
+            7 * 12 * consts::HOUR
         } else {
-            num * consts::WEEK as i64
+            num * consts::WEEK
         }),
         Token::TimeInterval(TimeInterval::Month) => {
             if half {
                 res.set_duration(14 * consts::DAY as i64);
             } else {
-                res.unwrap_mut().month = ((local.month() as i64 + num) % 12) as usize;
+                res.set_month((local.month() + num as u32) % 12);
             }
         }
         Token::TimeInterval(TimeInterval::Year) => {
             if half {
-                res.unwrap_mut().month = ((local.month() as i64 + 6) % 12) as usize;
+                res.set_month((local.month() + 6) % 12);
             } else {
-                res.unwrap_mut().year = (local.year() as i64 + num) as usize;
+                res.set_year(local.year() as u32 + num);
             }
         }
         _ => (),

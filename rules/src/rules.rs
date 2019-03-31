@@ -1,5 +1,6 @@
 use chrono::prelude::{DateTime, Local};
 use nom::{types::CompleteStr, IResult};
+use std::convert::From;
 
 use crate::errors::DateTimeError;
 use crate::tokens::{PToken, Priority, Token};
@@ -38,7 +39,7 @@ pub struct Context {
 
     // absolute values
     pub year: usize,
-    pub month: usize,
+    pub month: u32,
     pub hour: usize,
     pub minute: usize,
 }
@@ -121,9 +122,30 @@ impl<'a> RuleResult<'a> {
         self
     }
 
-    pub fn set_duration(&mut self, duration: i64) {
+    pub fn set_duration<T>(&mut self, duration: T)
+    where
+        i64: From<T>,
+    {
         if self.context.is_ok() {
-            self.context.as_mut().unwrap().duration = duration;
+            self.context.as_mut().unwrap().duration = i64::from(duration);
+        }
+    }
+
+    pub fn set_month<T>(&mut self, month: T)
+    where
+        u32: From<T>,
+    {
+        if self.context.is_ok() {
+            self.context.as_mut().unwrap().month = u32::from(month);
+        }
+    }
+
+    pub fn set_year<T>(&mut self, year: T)
+    where
+        u32: From<T>,
+    {
+        if self.context.is_ok() {
+            self.context.as_mut().unwrap().month = u32::from(year);
         }
     }
 
