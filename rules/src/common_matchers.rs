@@ -15,7 +15,7 @@ pub(crate) fn match_num<T: Num + FromPrimitive>(token: Option<Token>) -> Option<
         Token::IntWord(IntWord::Ten) => Some(T::from_u8(10).unwrap()),
         Token::IntWord(IntWord::Eleven) => Some(T::from_u8(11).unwrap()),
         Token::IntWord(IntWord::Twelve) => Some(T::from_u8(12).unwrap()),
-        Token::Number(n) => Some(T::from_usize(n).unwrap()),
+        Token::Number(n) => Some(T::from_u32(n).unwrap()),
         _ => None,
     })
 }

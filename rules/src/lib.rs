@@ -175,8 +175,8 @@ named!(tokenize_word<CompleteStr, CompleteStr>,
 /// converts the number from the string representation into usize:
 ///
 /// "  , 321  " -> 321
-named!(recognize_uint<CompleteStr, usize>,
-    map_res!(preceded!(ltrim, recognize!(nom::digit)), |s: CompleteStr| s.parse::<usize>())
+named!(recognize_uint<CompleteStr, u32>,
+    map_res!(preceded!(ltrim, recognize!(nom::digit)), |s: CompleteStr| s.parse::<u32>())
 );
 
 /// TODO: Add comment

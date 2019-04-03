@@ -24,6 +24,7 @@ define!(
     [(Token::When(When::Tomorrow), Priority(1)), "tomorrow", Dist(2)] |
     [(Token::When(When::Tomorrow), Priority(1)), "tmr", Dist(0)]
 );
+
 define!(yesterday: (Token::When(When::Yesterday), Priority(1)), "yesterday", Dist(2));
 combine!(when => today | tonight | yesterday | tomorrow);
 
@@ -57,7 +58,7 @@ fn make_time(res: &mut RuleResult, _local: DateTime<Local>, _input: &str) {
 
     token.map_or((), |t| match t {
         Token::When(When::Last) => {
-            res.unwrap_mut().hour = 23;
+            res.set_hour(23u32);
             res.unwrap_mut().duration -= 24 * consts::HOUR as i64;
         }
         Token::When(When::Tomorrow) => {
@@ -67,8 +68,8 @@ fn make_time(res: &mut RuleResult, _local: DateTime<Local>, _input: &str) {
             res.unwrap_mut().duration -= 24 * consts::HOUR as i64;
         }
         Token::When(When::Tonight) => {
-            res.unwrap_mut().hour = 23;
-            res.unwrap_mut().minute = 0;
+            res.set_hour(23u32);
+            res.set_minute(0u32);
         }
         _ => (),
     });
@@ -77,20 +78,20 @@ fn make_time(res: &mut RuleResult, _local: DateTime<Local>, _input: &str) {
 
     token.map_or((), |t| match t {
         Token::TimeOfDay(TimeOfDay::Morning) => {
-            res.unwrap_mut().hour = 8;
-            res.unwrap_mut().minute = 0;
+            res.set_hour(8u32);
+            res.set_minute(0u32);
         }
         Token::TimeOfDay(TimeOfDay::Noon) => {
-            res.unwrap_mut().hour = 12;
-            res.unwrap_mut().minute = 0;
+            res.set_hour(12u32);
+            res.set_minute(0u32);
         }
         Token::TimeOfDay(TimeOfDay::Evening) => {
-            res.unwrap_mut().hour = 18;
-            res.unwrap_mut().minute = 0;
+            res.set_hour(18u32);
+            res.set_minute(0u32);
         }
         Token::TimeOfDay(TimeOfDay::Night) => {
-            res.unwrap_mut().hour = 23;
-            res.unwrap_mut().minute = 0;
+            res.set_hour(23u32);
+            res.set_minute(0u32);
         }
         _ => (),
     });

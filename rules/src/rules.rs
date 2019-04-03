@@ -38,10 +38,10 @@ pub struct Context {
     pub duration: i64,
 
     // absolute values
-    pub year: usize,
+    pub year: u32,
     pub month: u32,
-    pub hour: usize,
-    pub minute: usize,
+    pub hour: u32,
+    pub minute: u32,
 }
 
 #[derive(Debug)]
@@ -131,6 +131,24 @@ impl<'a> RuleResult<'a> {
         }
     }
 
+    pub fn set_minute<T>(&mut self, minute: T)
+    where
+        u32: From<T>,
+    {
+        if self.context.is_ok() {
+            self.context.as_mut().unwrap().minute = u32::from(minute);
+        }
+    }
+
+    pub fn set_hour<T>(&mut self, hour: T)
+    where
+        u32: From<T>,
+    {
+        if self.context.is_ok() {
+            self.context.as_mut().unwrap().hour = u32::from(hour);
+        }
+    }
+
     pub fn set_month<T>(&mut self, month: T)
     where
         u32: From<T>,
@@ -153,11 +171,11 @@ impl<'a> RuleResult<'a> {
         self.context.as_ref().map(|s| s.duration).unwrap_or(0)
     }
 
-    pub fn get_hours(&self) -> usize {
+    pub fn get_hours(&self) -> u32 {
         self.context.as_ref().map(|s| s.hour).unwrap_or(0)
     }
 
-    pub fn get_minutes(&self) -> usize {
+    pub fn get_minutes(&self) -> u32 {
         self.context.as_ref().map(|s| s.minute).unwrap_or(0)
     }
 
