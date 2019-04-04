@@ -113,6 +113,7 @@ pub enum Articles {
 pub enum Token {
     Char, // stands for any character
     Week,
+    Ago,
     Articles(Articles),
     Weekday(Weekday),
     When(When),

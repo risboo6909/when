@@ -77,6 +77,8 @@ named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<CompleteStr<'a>>,
     )
 );
 
+make_interpreter!(indices[0, 1, 2]);
+
 fn make_time(res: &mut RuleResult, local: DateTime<Local>, input: &str) {
     let mut offset = 0;
     let mut day = 0;
@@ -114,40 +116,34 @@ fn make_time(res: &mut RuleResult, local: DateTime<Local>, input: &str) {
         Token::When(When::Next) => {
             let delta = day - local.weekday() as i64;
             if delta > 0 {
-                offset = Duration::days(delta).num_seconds();
+                res.add_duration(Duration::days(delta).num_seconds());
             } else {
-                offset = Duration::days(7 + delta).num_seconds();
+                res.add_duration(Duration::days(7 + delta).num_seconds());
             }
         }
         Token::When(When::Last) | Token::When(When::Past) => {
             let delta = local.weekday() as i64 - day;
             if delta > 0 {
-                offset = -Duration::days(delta).num_seconds();
+                res.add_duration(-Duration::days(delta).num_seconds());
             } else {
-                offset = -Duration::days(7 + delta).num_seconds();
+                res.add_duration(-Duration::days(7 + delta).num_seconds());
             }
         }
         Token::When(When::This) => {
             let weekday_i64 = local.weekday() as i64;
             if weekday_i64 < day {
-                offset = Duration::days(day - weekday_i64).num_seconds();
+                res.add_duration(Duration::days(day - weekday_i64).num_seconds());
             } else if weekday_i64 > day {
                 // what did user mean? previous week day or this week day or next
                 // week day? we don't know!
-                res.context = Err(DateTimeError::AmbiguousTime {
+                res.set_error(DateTimeError::AmbiguousTime {
                     msg: input.to_string(),
                 });
-            } else {
-                offset = 0;
             }
         }
         _ => (),
     });
-
-    res.set_duration(offset);
 }
-
-make_interpreter!(indices[0, 1, 2]);
 
 #[cfg(test)]
 mod tests {

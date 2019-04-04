@@ -122,12 +122,16 @@ impl<'a> RuleResult<'a> {
         self
     }
 
-    pub fn set_duration<T>(&mut self, duration: T)
+    pub fn set_error(&mut self, err: DateTimeError) {
+        self.context = Err(err);
+    }
+
+    pub fn add_duration<T>(&mut self, delta: T)
     where
         i64: From<T>,
     {
         if self.context.is_ok() {
-            self.context.as_mut().unwrap().duration = i64::from(duration);
+            self.context.as_mut().unwrap().duration += i64::from(delta);
         }
     }
 

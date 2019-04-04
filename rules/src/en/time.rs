@@ -46,6 +46,8 @@ named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<CompleteStr<'a>>,
     )
 );
 
+make_interpreter!(indices[0, 1, 2, 3]);
+
 fn make_time(res: &mut RuleResult, _local: DateTime<Local>, input: &str) {
     let mut hrs: u32 = 0;
 
@@ -68,7 +70,7 @@ fn make_time(res: &mut RuleResult, _local: DateTime<Local>, input: &str) {
         if hrs <= 23 {
             res.unwrap_mut().minute = minutes;
         } else {
-            res.context = Err(DateTimeError::InvalidTime {
+            res.set_error(DateTimeError::InvalidTime {
                 msg: input.to_string(),
                 what: "hours".to_string(),
                 value: hrs,
@@ -90,8 +92,6 @@ fn make_time(res: &mut RuleResult, _local: DateTime<Local>, input: &str) {
 
     res.set_hour(hrs);
 }
-
-make_interpreter!(indices[0, 1, 2, 3]);
 
 #[cfg(test)]
 mod tests {

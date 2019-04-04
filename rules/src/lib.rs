@@ -47,6 +47,23 @@ macro_rules! set {
 ///            &Weekday::Saturday)
 ///    )
 /// );
+///
+/// It's important to note that variants must be mutually exclusive, otherwise first (in order of
+/// declaration) match will be selected.
+///
+/// For example:
+///
+/// define!(
+///    foo_bar:
+///    [(Token::Foo(Foo), Priority(0)), "foo", Dist(3)] |
+///    [(Token::Bar(Bar), Priority(0)), "bar", Dist(3)]
+/// );
+///
+/// passing string "bar" to foo_bar! combinator will lead to "Foo" token recognition, because
+/// there is 3 units editing distance between strings "foo" and "bar" and therefor first match will
+/// be chosen, which is "Foo".
+///
+/// Use "combine!" combinator if you want to choose the best fit word among the list.
 macro_rules! define {
     ( $func_name: ident: ($token: expr, $p: expr), $repr: expr, $max_dist: expr ) => (
         named_args!(pub $func_name<'a>(exact_match: bool)<CompleteStr<'a>, TokenDesc>,

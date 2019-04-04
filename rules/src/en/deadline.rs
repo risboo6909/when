@@ -133,31 +133,31 @@ fn make_time(res: &mut RuleResult, local: DateTime<Local>, _input: &str) {
 
     token.map_or((), |t| match t {
         Token::TimeInterval(TimeInterval::Second) => {
-            res.set_duration(num);
+            res.add_duration(num);
         }
-        Token::TimeInterval(TimeInterval::Minute) => res.set_duration(if half {
+        Token::TimeInterval(TimeInterval::Minute) => res.add_duration(if half {
             30 * consts::SECOND
         } else {
             num * consts::MINUTE
         }),
-        Token::TimeInterval(TimeInterval::Hour) => res.set_duration(if half {
+        Token::TimeInterval(TimeInterval::Hour) => res.add_duration(if half {
             30 * consts::MINUTE
         } else {
             num * consts::HOUR
         }),
-        Token::TimeInterval(TimeInterval::Day) => res.set_duration(if half {
+        Token::TimeInterval(TimeInterval::Day) => res.add_duration(if half {
             12 * consts::HOUR
         } else {
             num * consts::DAY
         }),
-        Token::TimeInterval(TimeInterval::Week) => res.set_duration(if half {
+        Token::TimeInterval(TimeInterval::Week) => res.add_duration(if half {
             7 * 12 * consts::HOUR
         } else {
             num * consts::WEEK
         }),
         Token::TimeInterval(TimeInterval::Month) => {
             if half {
-                res.set_duration(14 * consts::DAY as i64);
+                res.add_duration(14 * consts::DAY as i64);
             } else {
                 res.set_month((local.month() + num as u32) % 12);
             }
