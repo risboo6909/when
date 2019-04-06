@@ -133,31 +133,31 @@ fn make_time(res: &mut RuleResult, local: DateTime<Local>, _input: &str) {
 
     token.map_or((), |t| match t {
         Token::TimeInterval(TimeInterval::Second) => {
-            res.add_duration(num);
+            res.set_duration(num);
         }
-        Token::TimeInterval(TimeInterval::Minute) => res.add_duration(if half {
+        Token::TimeInterval(TimeInterval::Minute) => res.set_duration(if half {
             30 * consts::SECOND
         } else {
             num * consts::MINUTE
         }),
-        Token::TimeInterval(TimeInterval::Hour) => res.add_duration(if half {
+        Token::TimeInterval(TimeInterval::Hour) => res.set_duration(if half {
             30 * consts::MINUTE
         } else {
             num * consts::HOUR
         }),
-        Token::TimeInterval(TimeInterval::Day) => res.add_duration(if half {
+        Token::TimeInterval(TimeInterval::Day) => res.set_duration(if half {
             12 * consts::HOUR
         } else {
             num * consts::DAY
         }),
-        Token::TimeInterval(TimeInterval::Week) => res.add_duration(if half {
+        Token::TimeInterval(TimeInterval::Week) => res.set_duration(if half {
             7 * 12 * consts::HOUR
         } else {
             num * consts::WEEK
         }),
         Token::TimeInterval(TimeInterval::Month) => {
             if half {
-                res.add_duration(14 * consts::DAY as i64);
+                res.set_duration(14 * consts::DAY as i64);
             } else {
                 res.set_month((local.month() + num as u32) % 12);
             }
@@ -188,41 +188,41 @@ mod tests {
     #[test]
     fn test_deadline() {
         let result = interpret("in 2 months", false, fixed_time());
-        assert_eq!(result.context.unwrap().month, 3);
+        assert_eq!(result.get_month(), 3);
 
         let result = interpret("in three months", false, fixed_time());
-        assert_eq!(result.context.unwrap().month, 4);
+        assert_eq!(result.get_month(), 4);
 
         let result = interpret("in a half year", false, fixed_time());
-        assert_eq!(result.context.unwrap().month, 7);
+        assert_eq!(result.get_month(), 7);
 
         let result = interpret("in the few days", false, fixed_time());
-        assert_eq!(result.context.unwrap().duration, 3 * consts::DAY as i64);
+        assert_eq!(result.get_duration_sec(), 3 * consts::DAY as i64);
 
         let result = interpret("in 5 minutes", false, fixed_time());
-        assert_eq!(result.context.unwrap().duration, 5 * consts::MINUTE as i64);
+        assert_eq!(result.get_duration_sec(), 5 * consts::MINUTE as i64);
 
         let result = interpret("in 5 minutes I will go home", false, fixed_time());
-        assert_eq!(result.context.unwrap().duration, 5 * consts::MINUTE as i64);
+        assert_eq!(result.get_duration_sec(), 5 * consts::MINUTE as i64);
 
         let result = interpret(
             "we have to do something within 10 days.",
             false,
             fixed_time(),
         );
-        assert_eq!(result.context.unwrap().duration, 10 * consts::DAY as i64);
+        assert_eq!(result.get_duration_sec(), 10 * consts::DAY as i64);
 
         let result = interpret(
             "we have to do something within five days.",
             false,
             fixed_time(),
         );
-        assert_eq!(result.context.unwrap().duration, 5 * consts::DAY as i64);
+        assert_eq!(result.get_duration_sec(), 5 * consts::DAY as i64);
 
         let result = interpret("in a half year", false, fixed_time());
-        assert_eq!(result.context.unwrap().month, 7);
+        assert_eq!(result.get_month(), 7);
 
         let result = interpret("drop me a line in a half hour", false, fixed_time());
-        assert_eq!(result.context.unwrap().duration, 30 * consts::MINUTE as i64);
+        assert_eq!(result.get_duration_sec(), 30 * consts::MINUTE as i64);
     }
 }

@@ -5,6 +5,7 @@ use std::convert::From;
 use crate::errors::DateTimeError;
 use crate::tokens::{PToken, Priority, Token};
 use crate::Dist;
+use failure::Fail;
 
 pub type MyResult<'a> = IResult<CompleteStr<'a>, TokenDesc>;
 
@@ -32,16 +33,28 @@ impl MatchBounds {
     }
 }
 
-#[derive(Debug, Default, PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct Context {
     // relative value
-    pub duration: i64,
+    pub duration: time::Duration,
 
     // absolute values
     pub year: u32,
     pub month: u32,
     pub hour: u32,
     pub minute: u32,
+}
+
+impl Default for Context {
+    fn default() -> Self {
+        Context {
+            duration: time::Duration::zero(),
+            year: 0,
+            month: 0,
+            hour: 0,
+            minute: 0,
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -126,12 +139,12 @@ impl<'a> RuleResult<'a> {
         self.context = Err(err);
     }
 
-    pub fn add_duration<T>(&mut self, delta: T)
+    pub fn set_duration<T>(&mut self, duration: T)
     where
         i64: From<T>,
     {
         if self.context.is_ok() {
-            self.context.as_mut().unwrap().duration += i64::from(delta);
+            self.context.as_mut().unwrap().duration = time::Duration::seconds(i64::from(duration));
         }
     }
 
@@ -171,8 +184,15 @@ impl<'a> RuleResult<'a> {
         }
     }
 
-    pub fn get_offset(&self) -> i64 {
-        self.context.as_ref().map(|s| s.duration).unwrap_or(0)
+    pub fn get_duration_sec(&self) -> i64 {
+        match &self.context {
+            Ok(ref ctx) => ctx.duration.num_seconds(),
+            Err(_) => 0,
+        }
+    }
+
+    pub fn get_month(&self) -> u32 {
+        self.context.as_ref().map(|s| s.month).unwrap_or(0)
     }
 
     pub fn get_hours(&self) -> u32 {

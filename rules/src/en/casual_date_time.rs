@@ -59,13 +59,13 @@ fn make_time(res: &mut RuleResult, _local: DateTime<Local>, _input: &str) {
     token.map_or((), |t| match t {
         Token::When(When::Last) => {
             res.set_hour(23u32);
-            res.unwrap_mut().duration -= 24 * consts::HOUR as i64;
+            res.set_duration(-24 * consts::HOUR as i64);
         }
         Token::When(When::Tomorrow) => {
-            res.unwrap_mut().duration += 24 * consts::HOUR as i64;
+            res.set_duration(24 * consts::HOUR as i64);
         }
         Token::When(When::Yesterday) => {
-            res.unwrap_mut().duration -= 24 * consts::HOUR as i64;
+            res.set_duration(-24 * consts::HOUR as i64);
         }
         Token::When(When::Tonight) => {
             res.set_hour(23u32);
@@ -118,7 +118,7 @@ mod tests {
                 end_idx: 18
             })
         );
-        assert_eq!(result.unwrap().duration, 0);
+        assert_eq!(result.get_duration_sec(), 0);
 
         let result = interpret("The deadline is today", false, fixed_time());
         assert_eq!(
@@ -128,7 +128,7 @@ mod tests {
                 end_idx: 20
             })
         );
-        assert_eq!(result.unwrap().duration, 0);
+        assert_eq!(result.get_duration_sec(), 0);
 
         let result = interpret("The deadline is tonight", false, fixed_time());
         assert_eq!(
@@ -138,8 +138,8 @@ mod tests {
                 end_idx: 22
             })
         );
-        assert_eq!(result.unwrap().hour, 23);
-        assert_eq!(result.unwrap().minute, 0);
+        assert_eq!(result.get_hours(), 23);
+        assert_eq!(result.get_minutes(), 0);
 
         let result = interpret("The deadline is tomorrow", false, fixed_time());
         assert_eq!(
@@ -149,7 +149,7 @@ mod tests {
                 end_idx: 23
             })
         );
-        assert_eq!(result.unwrap().duration, 24 * consts::HOUR as i64);
+        assert_eq!(result.get_duration_sec(), 24 * consts::HOUR as i64);
 
         let result = interpret("The deadline was yesterday", false, fixed_time());
         assert_eq!(
@@ -159,7 +159,7 @@ mod tests {
                 end_idx: 25
             })
         );
-        assert_eq!(result.unwrap().duration, -24 * consts::HOUR as i64);
+        assert_eq!(result.get_duration_sec(), -24 * consts::HOUR as i64);
 
         let result = interpret("Please call me tomorrow evening", false, fixed_time());
         assert_eq!(
@@ -169,8 +169,8 @@ mod tests {
                 end_idx: 30
             })
         );
-        assert_eq!(result.unwrap().duration, 24 * consts::HOUR as i64);
-        assert_eq!(result.unwrap().hour, 18);
+        assert_eq!(result.get_duration_sec(), 24 * consts::HOUR as i64);
+        assert_eq!(result.get_hours(), 18);
 
         let result = interpret("He told me that yesterday morning", false, fixed_time());
         assert_eq!(
@@ -180,8 +180,8 @@ mod tests {
                 end_idx: 32
             })
         );
-        assert_eq!(result.unwrap().duration, -24 * consts::HOUR as i64);
-        assert_eq!(result.unwrap().hour, 8);
+        assert_eq!(result.get_duration_sec(), -24 * consts::HOUR as i64);
+        assert_eq!(result.get_hours(), 8);
 
         let result = interpret("Last night I fell asleep", false, fixed_time());
         assert_eq!(
@@ -191,7 +191,7 @@ mod tests {
                 end_idx: 9
             })
         );
-        assert_eq!(result.unwrap().duration, -24 * consts::HOUR as i64);
-        assert_eq!(result.unwrap().hour, 23);
+        assert_eq!(result.get_duration_sec(), -24 * consts::HOUR as i64);
+        assert_eq!(result.get_hours(), 23);
     }
 }

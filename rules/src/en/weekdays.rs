@@ -116,23 +116,23 @@ fn make_time(res: &mut RuleResult, local: DateTime<Local>, input: &str) {
         Token::When(When::Next) => {
             let delta = day - local.weekday() as i64;
             if delta > 0 {
-                res.add_duration(Duration::days(delta).num_seconds());
+                res.set_duration(Duration::days(delta).num_seconds());
             } else {
-                res.add_duration(Duration::days(7 + delta).num_seconds());
+                res.set_duration(Duration::days(7 + delta).num_seconds());
             }
         }
         Token::When(When::Last) | Token::When(When::Past) => {
             let delta = local.weekday() as i64 - day;
             if delta > 0 {
-                res.add_duration(-Duration::days(delta).num_seconds());
+                res.set_duration(-Duration::days(delta).num_seconds());
             } else {
-                res.add_duration(-Duration::days(7 + delta).num_seconds());
+                res.set_duration(-Duration::days(7 + delta).num_seconds());
             }
         }
         Token::When(When::This) => {
             let weekday_i64 = local.weekday() as i64;
             if weekday_i64 < day {
-                res.add_duration(Duration::days(day - weekday_i64).num_seconds());
+                res.set_duration(Duration::days(day - weekday_i64).num_seconds());
             } else if weekday_i64 > day {
                 // what did user mean? previous week day or this week day or next
                 // week day? we don't know!
@@ -167,7 +167,7 @@ mod tests {
                 end_idx: 24
             })
         );
-        assert_eq!(result.get_offset(), -86400);
+        assert_eq!(result.get_duration_sec(), -86400);
 
         let result = interpret("past saturday", false, fixed_time());
         assert_eq!(
@@ -177,7 +177,7 @@ mod tests {
                 end_idx: 12
             })
         );
-        assert_eq!(result.get_offset(), -259200);
+        assert_eq!(result.get_duration_sec(), -259200);
 
         let result = interpret("pst frday", false, fixed_time());
         assert_eq!(
@@ -187,7 +187,7 @@ mod tests {
                 end_idx: 8
             })
         );
-        assert_eq!(result.get_offset(), -345600);
+        assert_eq!(result.get_duration_sec(), -345600);
 
         let result = interpret("pat thrday", false, fixed_time());
         assert_eq!(
@@ -197,7 +197,7 @@ mod tests {
                 end_idx: 9
             })
         );
-        assert_eq!(result.get_offset(), -432000);
+        assert_eq!(result.get_duration_sec(), -432000);
 
         let result = interpret("past wednesday", true, fixed_time());
         assert_eq!(
@@ -207,7 +207,7 @@ mod tests {
                 end_idx: 13
             })
         );
-        assert_eq!(result.get_offset(), -518400);
+        assert_eq!(result.get_duration_sec(), -518400);
 
         let result = interpret("past tuesday", true, fixed_time());
         assert_eq!(
@@ -217,7 +217,7 @@ mod tests {
                 end_idx: 11
             })
         );
-        assert_eq!(result.get_offset(), -604800);
+        assert_eq!(result.get_duration_sec(), -604800);
 
         let result = interpret("lst monday", false, fixed_time());
         assert_eq!(
@@ -227,7 +227,7 @@ mod tests {
                 end_idx: 9
             })
         );
-        assert_eq!(result.get_offset(), -86400);
+        assert_eq!(result.get_duration_sec(), -86400);
     }
 
     #[test]
@@ -240,7 +240,7 @@ mod tests {
                 end_idx: 10
             })
         );
-        assert_eq!(result.get_offset(), 518400);
+        assert_eq!(result.get_duration_sec(), 518400);
 
         let result = interpret("drop me a line at next wednesday", false, fixed_time());
         assert_eq!(
@@ -250,7 +250,7 @@ mod tests {
                 end_idx: 31
             })
         );
-        assert_eq!(result.get_offset(), 86400);
+        assert_eq!(result.get_duration_sec(), 86400);
     }
 
     #[test]
@@ -271,6 +271,6 @@ mod tests {
                 end_idx: 10
             })
         );
-        assert_eq!(result.get_offset(), 259200);
+        assert_eq!(result.get_duration_sec(), 259200);
     }
 }
