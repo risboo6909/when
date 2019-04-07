@@ -249,7 +249,7 @@ fn recognize_word<'a>(
     token: crate::tokens::PToken,
 ) -> MyResult<'a> {
     if let Ok((tail, mut word)) = tokenize_word(input) {
-        let normalized_word = *word.borrow_mut().replace(".", "");
+        let normalized_word = word.borrow_mut().replace(".", "");
         if max_dist == crate::Dist(0) {
             // when max_dist is 0 perform just plain string comparison
             if normalized_word == *pattern {
