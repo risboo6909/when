@@ -138,7 +138,7 @@ macro_rules! combine {
 
 /// TODO: add comment
 macro_rules! make_interpreter {
-    ( terms_count = $n: expr ) => {
+    ( positions = $n: expr ) => {
         use tuple::TupleElements;
 
         pub(crate) fn interpret(

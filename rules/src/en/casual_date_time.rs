@@ -51,7 +51,7 @@ named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<CompleteStr<'a>>,
     )
 );
 
-make_interpreter!(terms_count = 2);
+make_interpreter!(positions = 2);
 
 fn make_time(res: &mut RuleResult, _local: DateTime<Local>, _input: &str) {
     let token = res.token_by_priority(Priority(1));
