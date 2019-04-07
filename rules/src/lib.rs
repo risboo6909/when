@@ -10,6 +10,7 @@ use crate::rules::{FnRule, MatchBounds, MatchResult, MyResult, RuleResult, Token
 use crate::tokens::{PToken, Token};
 
 use chrono::prelude::Local;
+use core::borrow::BorrowMut;
 use nom::{
     self, char, map_res, named, named_args, preceded, recognize, tag, take_while,
     types::CompleteStr, Context, ErrorKind, IResult,
@@ -247,14 +248,15 @@ fn recognize_word<'a>(
     max_dist: crate::Dist,
     token: crate::tokens::PToken,
 ) -> MyResult<'a> {
-    if let Ok((tail, word)) = tokenize_word(input) {
+    if let Ok((tail, mut word)) = tokenize_word(input) {
+        let normalized_word = *word.borrow_mut().replace(".", "");
         if max_dist == crate::Dist(0) {
             // when max_dist is 0 perform just plain string comparison
-            if *word == *pattern {
+            if normalized_word == *pattern {
                 return Ok((tail, TokenDesc::new(token, crate::Dist(0))));
             }
         } else {
-            let dist = Dist(damerau_levenshtein(*word, *pattern));
+            let dist = Dist(damerau_levenshtein(&normalized_word, *pattern));
             if dist <= max_dist {
                 return Ok((tail, TokenDesc::new(token, dist)));
             }
@@ -269,7 +271,7 @@ fn recognize_word<'a>(
 fn best_fit<'a>(
     input: CompleteStr<'a>,
     exact_match: bool,
-    funcs: Vec<&Fn(CompleteStr<'a>, bool) -> MyResult<'a>>,
+    combinators: Vec<&Fn(CompleteStr<'a>, bool) -> MyResult<'a>>,
 ) -> MyResult<'a> {
     let mut min_dist = Dist(std::usize::MAX);
 
@@ -277,8 +279,8 @@ fn best_fit<'a>(
     let mut selected_count = 0;
     let mut selected_tail = CompleteStr("");
 
-    for f in funcs {
-        if let Ok((tail, TokenDesc { token, dist })) = f(input, exact_match) {
+    for comb in combinators {
+        if let Ok((tail, TokenDesc { token, dist })) = comb(input, exact_match) {
             if min_dist > dist {
                 selected_token = token;
                 selected_tail = tail;

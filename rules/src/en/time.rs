@@ -14,16 +14,14 @@ define_num!(minutes: (Token::Number, Priority(2)));
 
 define!(
     am:
-    [(Token::AmPm(AmPm::Am), Priority(3)), "a.m.", Dist(0)] |
-    [(Token::AmPm(AmPm::Am), Priority(3)), "a.", Dist(0)] |
-    [(Token::AmPm(AmPm::Am), Priority(3)), "am", Dist(0)]
+    [(Token::AmPm(AmPm::Am), Priority(3)), "am", Dist(1)] |
+    [(Token::AmPm(AmPm::Am), Priority(3)), "a", Dist(0)]
 );
 
 define!(
     pm:
-    [(Token::AmPm(AmPm::Pm), Priority(3)), "p.m.", Dist(0)] |
-    [(Token::AmPm(AmPm::Pm), Priority(3)), "p.", Dist(0)] |
-    [(Token::AmPm(AmPm::Pm), Priority(3)), "pm", Dist(0)]
+    [(Token::AmPm(AmPm::Pm), Priority(3)), "pm", Dist(1)] |
+    [(Token::AmPm(AmPm::Pm), Priority(3)), "p", Dist(0)]
 );
 
 combine!(am_pm => am | pm);

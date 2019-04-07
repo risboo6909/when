@@ -1,5 +1,6 @@
 use chrono::prelude::*;
 
+use crate::common_matchers::match_num;
 use crate::tokens::{Adverbs, Articles, IntWord, Priority, TimeInterval, Token};
 use crate::{consts, rules::RuleResult, stub, Dist, TokenDesc};
 use nom::{alt, apply, call, many_till, named_args, take, tuple, types::CompleteStr};
@@ -36,13 +37,13 @@ define!(few_half:
 
 combine!(a_few_half => article | few_half);
 
-define!(seconds: (Token::TimeInterval(TimeInterval::Second), Priority(1)), "second", Dist(2));
-define!(minutes: (Token::TimeInterval(TimeInterval::Minute), Priority(1)), "minute", Dist(2));
-define!(hours: (Token::TimeInterval(TimeInterval::Hour), Priority(1)), "hour", Dist(1));
-define!(days: (Token::TimeInterval(TimeInterval::Day), Priority(1)), "days", Dist(1));
-define!(weeks: (Token::TimeInterval(TimeInterval::Week), Priority(1)), "week", Dist(1));
-define!(months: (Token::TimeInterval(TimeInterval::Month), Priority(1)), "month", Dist(1));
-define!(years: (Token::TimeInterval(TimeInterval::Year), Priority(1)), "year", Dist(1));
+define!(seconds: (Token::TimeInterval(TimeInterval::Second), Priority(1)), "seconds", Dist(3));
+define!(minutes: (Token::TimeInterval(TimeInterval::Minute), Priority(1)), "minutes", Dist(3));
+define!(hours: (Token::TimeInterval(TimeInterval::Hour), Priority(1)), "hours", Dist(2));
+define!(days: (Token::TimeInterval(TimeInterval::Day), Priority(1)), "days", Dist(2));
+define!(weeks: (Token::TimeInterval(TimeInterval::Week), Priority(1)), "weeks", Dist(2));
+define!(months: (Token::TimeInterval(TimeInterval::Month), Priority(1)), "months", Dist(2));
+define!(years: (Token::TimeInterval(TimeInterval::Year), Priority(1)), "years", Dist(2));
 
 combine!(time_interval => seconds | minutes | hours | days | weeks | months | years);
 
@@ -53,14 +54,19 @@ named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<CompleteStr<'a>>,
     many_till!(take!(1),
         alt!(
             // half an hour ago
-            tuple!(apply!(a_few_half, true), apply!(article, true), apply!(time_interval, true),
+            tuple!(apply!(a_few_half, exact_match), apply!(article, true), apply!(time_interval, exact_match),
                    apply!(ago, exact_match)) |
             // few hours ago, a minute ago, half month ago
-            tuple!(apply!(a_few_half, true), apply!(time_interval, true), apply!(ago, exact_match), stub) |
+            tuple!(apply!(a_few_half, exact_match), apply!(time_interval, exact_match),
+                   apply!(ago, true), stub) |
             // two hours ago, one minute ago, five month ago
-            tuple!(apply!(int_word, true), apply!(time_interval, true), apply!(ago, exact_match), stub) |
+            tuple!(apply!(int_word, exact_match), apply!(time_interval, exact_match),
+                   apply!(ago, true), stub) |
             // 2 hours ago, 1 minute ago, 5 month ago
-            tuple!(apply!(number, true), apply!(time_interval, true), apply!(ago, exact_match), stub)
+            tuple!(apply!(number, true), apply!(time_interval, exact_match), apply!(ago, true), stub) |
+            // a month ago, an year ago
+            tuple!(apply!(a_few_half, exact_match), apply!(time_interval, exact_match),
+                   apply!(ago, true), stub)
         )
     )
 );
@@ -72,26 +78,31 @@ fn make_time(res: &mut RuleResult, local: DateTime<Local>, _input: &str) {
     let mut half = false;
 
     let token = res.token_by_priority(Priority(0));
-    token.map_or((), |t| match t {
-        Token::Articles(_) => {
-            num = 1;
-        }
-        Token::Adverbs(Adverbs::Few) => {
-            num = 3;
-        }
-        Token::Adverbs(Adverbs::Half) => {
-            half = true;
-        }
-        Token::Number(n) => {
-            num = n as i32;
-        }
-        _ => unreachable!(),
-    });
+
+    if let Some(n) = match_num(token.clone()) {
+        num = n;
+    } else {
+        token.map_or((), |t| match t {
+            Token::Articles(_) => {
+                num = 1;
+            }
+            Token::Adverbs(Adverbs::Few) => {
+                num = 3;
+            }
+            Token::Adverbs(Adverbs::Half) => {
+                half = true;
+            }
+            Token::Number(n) => {
+                num = n as i32;
+            }
+            _ => unreachable!(),
+        });
+    }
 
     let token = res.token_by_priority(Priority(1));
     token.map_or((), |t| match t {
         Token::TimeInterval(TimeInterval::Second) => {
-            res.set_duration(num);
+            res.set_duration(-num);
         }
         Token::TimeInterval(TimeInterval::Minute) => res.set_duration(if half {
             -30 * consts::SECOND
@@ -117,14 +128,14 @@ fn make_time(res: &mut RuleResult, local: DateTime<Local>, _input: &str) {
             if half {
                 res.set_duration(-14 * consts::DAY);
             } else {
-                res.set_month(-(local.month() as i32 + num));
+                res.set_month(local.month() as i32 - num);
             }
         }
         Token::TimeInterval(TimeInterval::Year) => {
             if half {
-                res.set_month(-(local.month() as i32 + 6));
+                res.set_month(local.month() as i32 - 6);
             } else {
-                res.set_year(-(local.year() + num));
+                res.set_year(local.year() - num);
             }
         }
         _ => unreachable!(),
@@ -134,7 +145,6 @@ fn make_time(res: &mut RuleResult, local: DateTime<Local>, _input: &str) {
 #[cfg(test)]
 mod tests {
     use super::interpret;
-    use crate::errors::DateTimeError::AmbiguousTime;
     use crate::{consts, MatchBounds};
     use chrono::prelude::*;
 
@@ -147,8 +157,35 @@ mod tests {
     fn test_past_time() {
         let result = interpret("half an hour ago", false, fixed_time());
         assert_eq!(result.get_duration_sec() as i32, -30 * consts::MINUTE);
-        // TODO: Check Levenshtein
-        //        let result = interpret("1 hours ago", false, fixed_time());
-        //        assert_eq!(result.get_duration_sec() as i32, -consts::HOUR);
+
+        let result = interpret("2 hour ago", false, fixed_time());
+        assert_eq!(result.get_duration_sec() as i32, -2 * consts::HOUR);
+
+        let result = interpret("5 minuts ago", false, fixed_time());
+        assert_eq!(result.get_duration_sec() as i32, -5 * consts::MINUTE);
+
+        let result = interpret("5 mnte ago I went to the zoo", false, fixed_time());
+        assert_eq!(result.get_duration_sec() as i32, -5 * consts::MINUTE);
+
+        let result = interpret("we did something 10 days ago.", false, fixed_time());
+        assert_eq!(result.get_duration_sec() as i32, -10 * consts::DAY);
+
+        let result = interpret("we did something five days ago.", false, fixed_time());
+        assert_eq!(result.get_duration_sec() as i32, -5 * consts::DAY);
+
+        let result = interpret("5 seconds ago a car was moved", false, fixed_time());
+        assert_eq!(result.get_duration_sec() as i32, -5 * consts::SECOND);
+
+        let result = interpret("two weks ago", false, fixed_time());
+        assert_eq!(result.get_duration_sec() as i32, -2 * consts::WEEK);
+
+        let result = interpret("a month ago", false, fixed_time());
+        assert_eq!(result.get_month(), 0);
+
+        let result = interpret("a few months ago", false, fixed_time());
+        assert_eq!(result.get_month(), -2);
+
+        let result = interpret("half year ago", false, fixed_time());
+        assert_eq!(result.get_month(), -5);
     }
 }
