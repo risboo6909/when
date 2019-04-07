@@ -77,7 +77,7 @@ named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<CompleteStr<'a>>,
     )
 );
 
-make_interpreter!(indices[0, 1, 2]);
+make_interpreter!(terms_count = 3);
 
 fn make_time(res: &mut RuleResult, local: DateTime<Local>, input: &str) {
     let mut offset = 0;

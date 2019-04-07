@@ -138,37 +138,37 @@ macro_rules! combine {
 
 /// TODO: add comment
 macro_rules! make_interpreter {
-
-    ( indices[$($n: expr),*] ) => (
-
+    ( terms_count = $n: expr ) => {
         use tuple::TupleElements;
 
-        pub(crate) fn interpret(input: &str, exact_match: bool, local_time: DateTime<Local>) -> RuleResult {
-
+        pub(crate) fn interpret(
+            input: &str,
+            exact_match: bool,
+            local_time: DateTime<Local>,
+        ) -> RuleResult {
             let mut res = RuleResult::new();
 
             match parse(CompleteStr(input), exact_match) {
                 Ok((tail, (skipped, tt))) => {
                     let bounds = crate::match_bounds(skipped, input, tail);
 
-                    res.set_bounds(Some(bounds))
-                       .set_tokens(vec![$(tt.get($n).cloned().unwrap()),*])
-                       .set_tail(*tail);
+                    res.set_bounds(Some(bounds));
+                    for idx in 0..$n {
+                        res.set_token(tt.get(idx).unwrap());
+                    }
+                    res.set_tail(*tail);
 
                     make_time(&mut res, local_time, input);
-                },
+                }
                 Err(nom::Err::Error(nom::Context::Code(ref input, nom::ErrorKind::ManyTill))) => {
                     res.set_tail(input);
-                },
+                }
                 _ => unreachable!(),
             }
 
             res
-
         }
-
-    );
-
+    };
 }
 
 pub mod en;

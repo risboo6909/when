@@ -113,7 +113,7 @@ named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<CompleteStr<'a>>,
     )
 );
 
-make_interpreter!(indices[0, 1, 2, 3]);
+make_interpreter!(terms_count = 4);
 
 fn make_time(res: &mut RuleResult, local: DateTime<Local>, _input: &str) {
     let mut half = false;
@@ -124,7 +124,7 @@ fn make_time(res: &mut RuleResult, local: DateTime<Local>, _input: &str) {
     token.map_or((), |t| match t {
         Token::Adverbs(Adverbs::Few) => num = 3,
         Token::Adverbs(Adverbs::Half) => half = true,
-        _ => (),
+        _ => unreachable!(),
     });
 
     let num = match_num(res.token_by_priority(Priority(3))).unwrap_or(num);
@@ -159,17 +159,17 @@ fn make_time(res: &mut RuleResult, local: DateTime<Local>, _input: &str) {
             if half {
                 res.set_duration(14 * consts::DAY);
             } else {
-                res.set_month((local.month() as i32 + num) % 12);
+                res.set_month(local.month() as i32 + num);
             }
         }
         Token::TimeInterval(TimeInterval::Year) => {
             if half {
-                res.set_month((local.month() as i32 + 6) % 12);
+                res.set_month(local.month() as i32 + 6);
             } else {
                 res.set_year(local.year() + num);
             }
         }
-        _ => (),
+        _ => unreachable!(),
     });
 }
 

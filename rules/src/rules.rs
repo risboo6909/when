@@ -19,6 +19,9 @@ impl TokenDesc {
     pub(crate) fn new(token: PToken, dist: Dist) -> Self {
         Self { token, dist }
     }
+    pub(crate) fn clone_content(&self) -> PToken {
+        self.token.clone()
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -78,23 +81,14 @@ impl<'a> RuleResult<'a> {
         }
     }
 
-    pub fn set_tokens(&mut self, tokens: Vec<TokenDesc>) -> &mut Self {
-        // remove stub tokens
-        let filtered_tokens: Vec<PToken> = tokens
-            .iter()
-            .filter_map(|item| {
-                let token = item.token.clone();
-                match token {
-                    PToken::Stub => None,
-                    _ => Some(token),
-                }
-            })
-            .collect();
-
-        if !filtered_tokens.is_empty() {
-            self.tokens = Some(filtered_tokens);
+    pub fn set_token(&mut self, token_descr: &TokenDesc) -> &mut Self {
+        if token_descr.token != PToken::Stub {
+            if let Some(ref mut tokens) = self.tokens {
+                tokens.push(token_descr.clone_content());
+            } else {
+                self.tokens = Some(vec![token_descr.clone_content()]);
+            }
         }
-
         self
     }
 
@@ -148,10 +142,21 @@ impl<'a> RuleResult<'a> {
         }
     }
 
+    pub fn get_duration_sec(&self) -> i64 {
+        match &self.context {
+            Ok(ref ctx) => ctx.duration.num_seconds(),
+            Err(_) => 0,
+        }
+    }
+
     pub fn set_minute(&mut self, minute: i32) {
         if self.context.is_ok() {
             self.context.as_mut().unwrap().minute = minute;
         }
+    }
+
+    pub fn get_minutes(&self) -> i32 {
+        self.context.as_ref().map(|s| s.minute).unwrap_or(0)
     }
 
     pub fn set_hour(&mut self, hour: i32) {
@@ -160,22 +165,13 @@ impl<'a> RuleResult<'a> {
         }
     }
 
+    pub fn get_hours(&self) -> i32 {
+        self.context.as_ref().map(|s| s.hour).unwrap_or(0)
+    }
+
     pub fn set_month(&mut self, month: i32) {
         if self.context.is_ok() {
             self.context.as_mut().unwrap().month = month;
-        }
-    }
-
-    pub fn set_year(&mut self, year: i32) {
-        if self.context.is_ok() {
-            self.context.as_mut().unwrap().year = year;
-        }
-    }
-
-    pub fn get_duration_sec(&self) -> i64 {
-        match &self.context {
-            Ok(ref ctx) => ctx.duration.num_seconds(),
-            Err(_) => 0,
         }
     }
 
@@ -183,12 +179,10 @@ impl<'a> RuleResult<'a> {
         self.context.as_ref().map(|s| s.month).unwrap_or(0)
     }
 
-    pub fn get_hours(&self) -> i32 {
-        self.context.as_ref().map(|s| s.hour).unwrap_or(0)
-    }
-
-    pub fn get_minutes(&self) -> i32 {
-        self.context.as_ref().map(|s| s.minute).unwrap_or(0)
+    pub fn set_year(&mut self, year: i32) {
+        if self.context.is_ok() {
+            self.context.as_mut().unwrap().year = year;
+        }
     }
 }
 
