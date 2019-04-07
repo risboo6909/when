@@ -117,7 +117,7 @@ make_interpreter!(indices[0, 1, 2, 3]);
 
 fn make_time(res: &mut RuleResult, local: DateTime<Local>, _input: &str) {
     let mut half = false;
-    let mut num: u32 = 1;
+    let mut num: i32 = 1;
 
     let token = res.token_by_priority(Priority(0));
 
@@ -157,16 +157,16 @@ fn make_time(res: &mut RuleResult, local: DateTime<Local>, _input: &str) {
         }),
         Token::TimeInterval(TimeInterval::Month) => {
             if half {
-                res.set_duration(14 * consts::DAY as i64);
+                res.set_duration(14 * consts::DAY);
             } else {
-                res.set_month((local.month() + num as u32) % 12);
+                res.set_month((local.month() as i32 + num) % 12);
             }
         }
         Token::TimeInterval(TimeInterval::Year) => {
             if half {
-                res.set_month((local.month() + 6) % 12);
+                res.set_month((local.month() as i32 + 6) % 12);
             } else {
-                res.set_year(local.year() as u32 + num);
+                res.set_year(local.year() + num);
             }
         }
         _ => (),

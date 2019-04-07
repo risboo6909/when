@@ -118,7 +118,7 @@ pub enum Token {
     Weekday(Weekday),
     When(When),
     AmPm(AmPm),
-    Number(u32),
+    Number(i32),
     IntWord(IntWord),
     TimeInterval(TimeInterval),
     TimeOfDay(TimeOfDay),

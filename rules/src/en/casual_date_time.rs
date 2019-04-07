@@ -58,7 +58,7 @@ fn make_time(res: &mut RuleResult, _local: DateTime<Local>, _input: &str) {
 
     token.map_or((), |t| match t {
         Token::When(When::Last) => {
-            res.set_hour(23u32);
+            res.set_hour(23);
             res.set_duration(-24 * consts::HOUR as i64);
         }
         Token::When(When::Tomorrow) => {
@@ -68,8 +68,8 @@ fn make_time(res: &mut RuleResult, _local: DateTime<Local>, _input: &str) {
             res.set_duration(-24 * consts::HOUR as i64);
         }
         Token::When(When::Tonight) => {
-            res.set_hour(23u32);
-            res.set_minute(0u32);
+            res.set_hour(23);
+            res.set_minute(0);
         }
         _ => (),
     });
@@ -78,20 +78,20 @@ fn make_time(res: &mut RuleResult, _local: DateTime<Local>, _input: &str) {
 
     token.map_or((), |t| match t {
         Token::TimeOfDay(TimeOfDay::Morning) => {
-            res.set_hour(8u32);
-            res.set_minute(0u32);
+            res.set_hour(8);
+            res.set_minute(0);
         }
         Token::TimeOfDay(TimeOfDay::Noon) => {
-            res.set_hour(12u32);
-            res.set_minute(0u32);
+            res.set_hour(12);
+            res.set_minute(0);
         }
         Token::TimeOfDay(TimeOfDay::Evening) => {
-            res.set_hour(18u32);
-            res.set_minute(0u32);
+            res.set_hour(18);
+            res.set_minute(0);
         }
         Token::TimeOfDay(TimeOfDay::Night) => {
-            res.set_hour(23u32);
-            res.set_minute(0u32);
+            res.set_hour(23);
+            res.set_minute(0);
         }
         _ => (),
     });

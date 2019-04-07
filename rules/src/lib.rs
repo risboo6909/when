@@ -110,7 +110,10 @@ macro_rules! define_num {
             if let Ok((tail, n)) = crate::recognize_uint(input) {
                 return Ok((
                     tail,
-                    TokenDesc::new(crate::tokens::PToken::PToken($ctor(n), $p), crate::Dist(0)),
+                    TokenDesc::new(
+                        crate::tokens::PToken::PToken($ctor(n as i32), $p),
+                        crate::Dist(0),
+                    ),
                 ));
             }
             crate::wrap_error(input, crate::my_errors::UNKNOWN)

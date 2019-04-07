@@ -3,7 +3,7 @@ use nom::{types::CompleteStr, IResult};
 use std::convert::From;
 
 use crate::errors::DateTimeError;
-use crate::tokens::{PToken, Priority, Token};
+use crate::tokens::{PToken, Priority, TimeInterval, Token};
 use crate::Dist;
 use failure::Fail;
 
@@ -39,10 +39,10 @@ pub struct Context {
     pub duration: time::Duration,
 
     // absolute values
-    pub year: u32,
-    pub month: u32,
-    pub hour: u32,
-    pub minute: u32,
+    pub year: i32,
+    pub month: i32,
+    pub hour: i32,
+    pub minute: i32,
 }
 
 impl Default for Context {
@@ -148,39 +148,27 @@ impl<'a> RuleResult<'a> {
         }
     }
 
-    pub fn set_minute<T>(&mut self, minute: T)
-    where
-        u32: From<T>,
-    {
+    pub fn set_minute(&mut self, minute: i32) {
         if self.context.is_ok() {
-            self.context.as_mut().unwrap().minute = u32::from(minute);
+            self.context.as_mut().unwrap().minute = minute;
         }
     }
 
-    pub fn set_hour<T>(&mut self, hour: T)
-    where
-        u32: From<T>,
-    {
+    pub fn set_hour(&mut self, hour: i32) {
         if self.context.is_ok() {
-            self.context.as_mut().unwrap().hour = u32::from(hour);
+            self.context.as_mut().unwrap().hour = hour;
         }
     }
 
-    pub fn set_month<T>(&mut self, month: T)
-    where
-        u32: From<T>,
-    {
+    pub fn set_month(&mut self, month: i32) {
         if self.context.is_ok() {
-            self.context.as_mut().unwrap().month = u32::from(month);
+            self.context.as_mut().unwrap().month = month;
         }
     }
 
-    pub fn set_year<T>(&mut self, year: T)
-    where
-        u32: From<T>,
-    {
+    pub fn set_year(&mut self, year: i32) {
         if self.context.is_ok() {
-            self.context.as_mut().unwrap().month = u32::from(year);
+            self.context.as_mut().unwrap().year = year;
         }
     }
 
@@ -191,24 +179,16 @@ impl<'a> RuleResult<'a> {
         }
     }
 
-    pub fn get_month(&self) -> u32 {
+    pub fn get_month(&self) -> i32 {
         self.context.as_ref().map(|s| s.month).unwrap_or(0)
     }
 
-    pub fn get_hours(&self) -> u32 {
+    pub fn get_hours(&self) -> i32 {
         self.context.as_ref().map(|s| s.hour).unwrap_or(0)
     }
 
-    pub fn get_minutes(&self) -> u32 {
+    pub fn get_minutes(&self) -> i32 {
         self.context.as_ref().map(|s| s.minute).unwrap_or(0)
-    }
-
-    pub fn unwrap(&self) -> &Context {
-        self.context.as_ref().unwrap()
-    }
-
-    pub fn unwrap_mut(&mut self) -> &mut Context {
-        self.context.as_mut().unwrap()
     }
 }
 

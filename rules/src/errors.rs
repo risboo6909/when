@@ -10,6 +10,6 @@ pub enum DateTimeError {
     InvalidTime {
         msg: String,
         what: String,
-        value: u32,
+        value: i32,
     },
 }

@@ -49,11 +49,11 @@ named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<CompleteStr<'a>>,
 make_interpreter!(indices[0, 1, 2, 3]);
 
 fn make_time(res: &mut RuleResult, _local: DateTime<Local>, input: &str) {
-    let mut hrs: u32 = 0;
+    let mut hrs: i32 = 0;
 
     let token = res.token_by_priority(Priority(0));
     if let Some(Token::Number(n)) = token {
-        hrs = n;
+        hrs = n as i32;
     }
 
     let token = res.token_by_priority(Priority(2));
@@ -68,7 +68,7 @@ fn make_time(res: &mut RuleResult, _local: DateTime<Local>, input: &str) {
         }
 
         if hrs <= 23 {
-            res.unwrap_mut().minute = minutes;
+            res.set_minute(minutes);
         } else {
             res.set_error(DateTimeError::InvalidTime {
                 msg: input.to_string(),
