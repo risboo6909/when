@@ -15,6 +15,7 @@ use nom::{
     self, char, map_res, named, named_args, preceded, recognize, tag, take_while,
     types::CompleteStr, Context, ErrorKind, IResult,
 };
+
 use strsim::damerau_levenshtein;
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
@@ -107,7 +108,7 @@ macro_rules! define_char {
 ///
 macro_rules! define_num {
     ( $func_name: ident: ($ctor: expr, $p: expr) ) => {
-        fn $func_name(input: CompleteStr, _: bool) -> crate::MyResult {
+        fn $func_name(input: CompleteStr) -> crate::MyResult {
             if let Ok((tail, n)) = crate::recognize_uint(input) {
                 return Ok((
                     tail,
@@ -240,8 +241,8 @@ fn wrap_error(input: CompleteStr, error_code: u32) -> MyResult {
     )))
 }
 
-/// Tries to recognize a word in a sentence using Domerau-Levenshtein algorithm, it is both simple
-/// enough and efficient.
+/// Tries to recognize a word using Domerau-Levenshtein algorithm, it is both simple enough and
+/// efficient.
 fn recognize_word<'a>(
     input: CompleteStr<'a>,
     pattern: CompleteStr<'a>,
@@ -249,6 +250,7 @@ fn recognize_word<'a>(
     token: crate::tokens::PToken,
 ) -> MyResult<'a> {
     if let Ok((tail, mut word)) = tokenize_word(input) {
+        // TODO: add comment why we replace "." with "" (examples a.m., p.m.0
         let normalized_word = word.borrow_mut().replace(".", "");
         if max_dist == crate::Dist(0) {
             // when max_dist is 0 perform just plain string comparison

@@ -63,7 +63,7 @@ named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<CompleteStr<'a>>,
             tuple!(apply!(int_word, exact_match), apply!(time_interval, exact_match),
                    apply!(ago, true), stub) |
             // 2 hours ago, 1 minute ago, 5 month ago
-            tuple!(apply!(number, true), apply!(time_interval, exact_match), apply!(ago, true), stub) |
+            tuple!(number, apply!(time_interval, exact_match), apply!(ago, true), stub) |
             // a month ago, an year ago
             tuple!(apply!(a_few_half, exact_match), apply!(time_interval, exact_match),
                    apply!(ago, true), stub)

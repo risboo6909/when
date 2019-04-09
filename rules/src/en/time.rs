@@ -31,15 +31,15 @@ named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<CompleteStr<'a>>,
     many_till!(take!(1),
         alt!(
             // hours:minutes am/pm, for example 5:30am, 4:44pm, etc.
-            tuple!(apply!(hours, true), colon, apply!(minutes, true), apply!(am_pm, exact_match)) |
+            tuple!(hours, colon, minutes, apply!(am_pm, exact_match)) |
             // hours:minutes am/pm, for example 5-30am, 4-44pm, etc.
-            tuple!(apply!(hours, true), dash, apply!(minutes, true), apply!(am_pm, exact_match)) |
+            tuple!(hours, dash, minutes, apply!(am_pm, exact_match)) |
             // hours:minutes am/pm, for example 5:30, 4:44, etc.
-            tuple!(apply!(hours, true), colon, apply!(minutes, true), stub) |
+            tuple!(hours, colon, minutes, stub) |
             // hours:minutes am/pm, for example 5-30, 4-44, etc.
-            tuple!(apply!(hours, true), dash, apply!(minutes, true), stub) |
+            tuple!(hours, dash, minutes, stub) |
             // hours, for example 5am, 6p.m., 4a., 3 p.m.
-            tuple!(apply!(hours, true), apply!(am_pm, exact_match), stub, stub)
+            tuple!(hours, apply!(am_pm, exact_match), stub, stub)
         )
     )
 );

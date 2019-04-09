@@ -43,8 +43,6 @@ combine!(int_word => one | two | three | four | five | six | seven | eight | nin
 
 define_num!(number: (Token::Number, Priority(3)));
 
-combine!(number_or_intword => int_word | number);
-
 define!(
     seconds:
     [(Token::TimeInterval(TimeInterval::Second), Priority(4)), "seconds", Dist(1)] |
@@ -97,10 +95,15 @@ named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<CompleteStr<'a>>,
         alt!(
             // e.g.: in a five months
             tuple!(apply!(when, exact_match), apply!(article, true),
-                   apply!(number_or_intword, exact_match), apply!(time_interval, exact_match)) |
+                   apply!(int_word, exact_match), apply!(time_interval, exact_match)) |
+            // e.g.: in a 5 months
+            tuple!(apply!(when, exact_match), apply!(article, true), number,
+                   apply!(time_interval, exact_match)) |
             // e.g.: in five months
-            tuple!(apply!(when, exact_match), apply!(number_or_intword, exact_match),
+            tuple!(apply!(when, exact_match), apply!(int_word, exact_match),
                    apply!(time_interval, exact_match), stub) |
+            // e.g.: in 5 months
+            tuple!(apply!(when, exact_match), number, apply!(time_interval, exact_match), stub) |
             // e.g.: in the few days
             tuple!(apply!(when, exact_match), apply!(article, true),
                    apply!(adverb, exact_match), apply!(time_interval, exact_match)) |
