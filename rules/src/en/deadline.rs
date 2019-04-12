@@ -1,6 +1,7 @@
 use chrono::prelude::*;
 
 use crate::common_matchers::match_num;
+use crate::errors::DateTimeError;
 use crate::tokens::{Adverbs, Articles, IntWord, Priority, TimeInterval, Token, When};
 use crate::{consts, rules::RuleResult, stub, Dist, TokenDesc};
 
@@ -118,7 +119,7 @@ named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<CompleteStr<'a>>,
 
 make_interpreter!(positions = 4);
 
-fn make_time(res: &mut RuleResult, local: DateTime<Local>, _input: &str) {
+fn make_time(res: &mut RuleResult, local: DateTime<Local>, input: &str) {
     let mut half = false;
     let mut num: i32 = 1;
 
@@ -131,6 +132,15 @@ fn make_time(res: &mut RuleResult, local: DateTime<Local>, _input: &str) {
     });
 
     let num = match_num(res.token_by_priority(Priority(3))).unwrap_or(num);
+
+    if num < 0 {
+        res.set_error(DateTimeError::InvalidTime {
+            msg: input.to_string(),
+            what: "number".to_owned(),
+            value: num,
+        });
+        return;
+    }
 
     let token = res.token_by_priority(Priority(4));
 
@@ -179,7 +189,7 @@ fn make_time(res: &mut RuleResult, local: DateTime<Local>, _input: &str) {
 #[cfg(test)]
 mod tests {
     use super::interpret;
-    use crate::errors::DateTimeError::AmbiguousTime;
+    use crate::errors::DateTimeError::{AmbiguousTime, InvalidTime};
     use crate::{consts, MatchBounds};
     use chrono::prelude::*;
 
@@ -207,6 +217,16 @@ mod tests {
 
         let result = interpret("in 5 minutes I will go home", false, fixed_time());
         assert_eq!(result.get_duration_sec(), 5 * consts::MINUTE as i64);
+
+        let result = interpret("in -3 minute", false, fixed_time());
+        assert_eq!(
+            result.context,
+            Err(InvalidTime {
+                msg: "in -3 minute".to_owned(),
+                what: "number".to_owned(),
+                value: -3,
+            })
+        );
 
         let result = interpret(
             "we have to do something within 10 days.",

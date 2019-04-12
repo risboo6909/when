@@ -1,6 +1,7 @@
 use chrono::prelude::*;
 
 use crate::common_matchers::match_num;
+use crate::errors::DateTimeError;
 use crate::tokens::{Adverbs, Articles, IntWord, Priority, TimeInterval, Token};
 use crate::{consts, rules::RuleResult, stub, Dist, TokenDesc};
 use nom::{alt, apply, call, many_till, named_args, take, tuple, types::CompleteStr};
@@ -73,7 +74,7 @@ named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<CompleteStr<'a>>,
 
 make_interpreter!(positions = 4);
 
-fn make_time(res: &mut RuleResult, local: DateTime<Local>, _input: &str) {
+fn make_time(res: &mut RuleResult, local: DateTime<Local>, input: &str) {
     let mut num = 0;
     let mut half = false;
 
@@ -97,6 +98,15 @@ fn make_time(res: &mut RuleResult, local: DateTime<Local>, _input: &str) {
             }
             _ => unreachable!(),
         });
+    }
+
+    if num < 0 {
+        res.set_error(DateTimeError::InvalidTime {
+            msg: input.to_string(),
+            what: "number".to_owned(),
+            value: num,
+        });
+        return;
     }
 
     let token = res.token_by_priority(Priority(1));
@@ -145,6 +155,7 @@ fn make_time(res: &mut RuleResult, local: DateTime<Local>, _input: &str) {
 #[cfg(test)]
 mod tests {
     use super::interpret;
+    use crate::errors::DateTimeError::InvalidTime;
     use crate::{consts, MatchBounds};
     use chrono::prelude::*;
 
@@ -166,6 +177,16 @@ mod tests {
 
         let result = interpret("5 mnte ago I went to the zoo", false, fixed_time());
         assert_eq!(result.get_duration_sec() as i32, -5 * consts::MINUTE);
+
+        let result = interpret("-5 mnte ago I went to the zoo", false, fixed_time());
+        assert_eq!(
+            result.context,
+            Err(InvalidTime {
+                msg: "-5 mnte ago I went to the zoo".to_owned(),
+                what: "number".to_owned(),
+                value: -5,
+            })
+        );
 
         let result = interpret("we did something 10 days ago.", false, fixed_time());
         assert_eq!(result.get_duration_sec() as i32, -10 * consts::DAY);

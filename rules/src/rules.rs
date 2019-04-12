@@ -44,6 +44,7 @@ pub struct Context {
     // absolute values
     pub year: i32,
     pub month: i32,
+    pub day: i32,
     pub hour: i32,
     pub minute: i32,
 }
@@ -54,6 +55,7 @@ impl Default for Context {
             duration: time::Duration::zero(),
             year: 0,
             month: 0,
+            day: 0,
             hour: 0,
             minute: 0,
         }
@@ -156,7 +158,7 @@ impl<'a> RuleResult<'a> {
     }
 
     pub fn get_minutes(&self) -> i32 {
-        self.context.as_ref().map(|s| s.minute).unwrap_or(0)
+        self.context.as_ref().unwrap().minute
     }
 
     pub fn set_hour(&mut self, hour: i32) {
@@ -166,7 +168,17 @@ impl<'a> RuleResult<'a> {
     }
 
     pub fn get_hours(&self) -> i32 {
-        self.context.as_ref().map(|s| s.hour).unwrap_or(0)
+        self.context.as_ref().unwrap().hour
+    }
+
+    pub fn set_day(&mut self, day: i32) {
+        if self.context.is_ok() {
+            self.context.as_mut().unwrap().day = day;
+        }
+    }
+
+    pub fn get_day(&self) -> i32 {
+        self.context.as_ref().unwrap().day
     }
 
     pub fn set_month(&mut self, month: i32) {
@@ -176,13 +188,17 @@ impl<'a> RuleResult<'a> {
     }
 
     pub fn get_month(&self) -> i32 {
-        self.context.as_ref().map(|s| s.month).unwrap_or(0)
+        self.context.as_ref().unwrap().month
     }
 
     pub fn set_year(&mut self, year: i32) {
         if self.context.is_ok() {
             self.context.as_mut().unwrap().year = year;
         }
+    }
+
+    pub fn get_year(&self) -> i32 {
+        self.context.as_ref().unwrap().year
     }
 }
 

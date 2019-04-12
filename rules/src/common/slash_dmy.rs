@@ -1,6 +1,7 @@
 use chrono::prelude::*;
 
 use crate::common_matchers::match_num;
+use crate::errors::DateTimeError;
 use crate::tokens::{Adverbs, Articles, IntWord, Priority, TimeInterval, Token, When};
 use crate::{consts, rules::RuleResult, stub, Dist, TokenDesc};
 
@@ -25,23 +26,85 @@ named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<CompleteStr<'a>>,
 
 make_interpreter!(positions = 5);
 
+const DAYS_IN_MONTH: &[i32; 12] = &[31, 28, 29, 30, 31, 28, 31, 30, 30, 31, 29, 31];
+
 fn is_leap_year(year: i32) -> bool {
     year % 4 == 0 && year % 100 != 0 || year % 400 == 0
 }
 
-fn make_time(res: &mut RuleResult, local: DateTime<Local>, _input: &str) {
+fn make_time(res: &mut RuleResult, local: DateTime<Local>, input: &str) {
+    let mut year: Option<i32> = None;
+    let mut month = 0;
+    let mut day = 0;
+
     let token = res.token_by_priority(Priority(0));
-    let mut year = 0;
     token.map_or((), |t| match t {
-        Token::Number(n) => year = n,
+        Token::Number(n) => day = n,
         _ => unreachable!(),
     });
+
+    let token = res.token_by_priority(Priority(1));
+    token.map_or((), |t| match t {
+        Token::Number(n) => month = n,
+        _ => unreachable!(),
+    });
+
+    let token = res.token_by_priority(Priority(2));
+    token.map_or((), |t| match t {
+        Token::Number(n) => year = Some(n),
+        _ => unreachable!(),
+    });
+
+    let year_int = match year {
+        Some(n) => n,
+        None => local.year(),
+    };
+
+    // only A.C. dates are supported yet
+    if year_int < 0 {
+        res.set_error(DateTimeError::InvalidTime {
+            msg: input.to_string(),
+            what: "year".to_owned(),
+            value: year_int,
+        });
+        return;
+    }
+
+    if month < 1 || month > 12 {
+        res.set_error(DateTimeError::InvalidTime {
+            msg: input.to_string(),
+            what: "month".to_owned(),
+            value: month,
+        });
+        return;
+    }
+
+    // DAYS_IN_MONTH slice counts from 0, however humans count months from 1
+    let mut days_in_month = DAYS_IN_MONTH[month as usize - 1];
+
+    // 29 days in february for leap years
+    if month == 2 && is_leap_year(year_int) {
+        days_in_month = 29;
+    }
+
+    if day < 1 || day > days_in_month {
+        res.set_error(DateTimeError::InvalidTime {
+            msg: input.to_string(),
+            what: "day".to_owned(),
+            value: day,
+        });
+        return;
+    }
+
+    res.set_year(year_int);
+    res.set_month(month);
+    res.set_day(day);
 }
 
 #[cfg(test)]
 mod tests {
     use super::interpret;
-    use crate::errors::DateTimeError::AmbiguousTime;
+    use crate::errors::DateTimeError::{AmbiguousTime, InvalidTime};
     use crate::{consts, MatchBounds};
     use chrono::prelude::*;
 
@@ -52,8 +115,44 @@ mod tests {
 
     #[test]
     fn test_slash_dmy() {
-        let result = interpret("20/12/10", false, fixed_time());
-        println!("{:?}", result);
-        //assert_eq!(result.get_month(), 3);
+        let result = interpret("20/12/2010", false, fixed_time());
+        assert_eq!(result.get_day(), 20);
+        assert_eq!(result.get_month(), 12);
+        assert_eq!(result.get_year(), 2010);
+
+        let result = interpret("3/10", false, fixed_time());
+        assert_eq!(result.get_day(), 3);
+        assert_eq!(result.get_month(), 10);
+        assert_eq!(result.get_year(), 2019);
+
+        let result = interpret("30/2/2018", false, fixed_time());
+        assert_eq!(
+            result.context,
+            Err(InvalidTime {
+                msg: "30/2/2018".to_owned(),
+                what: "day".to_owned(),
+                value: 30,
+            })
+        );
+
+        let result = interpret("25/13/2018", false, fixed_time());
+        assert_eq!(
+            result.context,
+            Err(InvalidTime {
+                msg: "25/13/2018".to_owned(),
+                what: "month".to_owned(),
+                value: 13,
+            })
+        );
+
+        let result = interpret("25/10/-2", false, fixed_time());
+        assert_eq!(
+            result.context,
+            Err(InvalidTime {
+                msg: "25/10/-2".to_owned(),
+                what: "year".to_owned(),
+                value: -2,
+            })
+        );
     }
 }

@@ -12,8 +12,8 @@ use crate::tokens::{PToken, Token};
 use chrono::prelude::Local;
 use core::borrow::BorrowMut;
 use nom::{
-    self, char, map_res, named, named_args, preceded, recognize, tag, take_while,
-    types::CompleteStr, Context, ErrorKind, IResult,
+    self, alt, char, map, map_res, named, named_args, opt, pair, preceded, recognize, tag,
+    take_while, types::CompleteStr, Context, ErrorKind, IResult,
 };
 
 use strsim::damerau_levenshtein;
@@ -109,7 +109,7 @@ macro_rules! define_char {
 macro_rules! define_num {
     ( $func_name: ident: ($ctor: expr, $p: expr) ) => {
         fn $func_name(input: CompleteStr) -> crate::MyResult {
-            if let Ok((tail, n)) = crate::recognize_uint(input) {
+            if let Ok((tail, n)) = crate::recognize_int(input) {
                 return Ok((
                     tail,
                     TokenDesc::new(
@@ -195,11 +195,18 @@ named!(tokenize_word<CompleteStr, CompleteStr>,
 
 /// Ignores whitespaces using "ltrim" and then consumes digits in a string until
 /// any non digit character appears or the string has been exhausted, and in case of success
-/// converts the number from the string representation into usize:
+/// converts the number from the string representation into i32:
 ///
-/// "  , 321  " -> 321
-named!(recognize_uint<CompleteStr, u32>,
-    map_res!(preceded!(ltrim, recognize!(nom::digit)), |s: CompleteStr| s.parse::<u32>())
+/// "  , -321  " -> -321
+named!(recognize_int<CompleteStr, i32>,
+    map!(
+        preceded!(ltrim, pair!(
+            opt!(alt!(tag!("+") | tag!("-"))),
+            map_res!(recognize!(nom::digit), |s: CompleteStr| s.parse::<i32>()))
+            ),
+        |(sign, value): (Option<nom::types::CompleteStr<'_>>, i32)| {
+        sign.and_then(|s| if s == CompleteStr("-") { Some(-1) } else { None }).unwrap_or(1) * value
+     })
 );
 
 /// TODO: Add comment
