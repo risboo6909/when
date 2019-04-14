@@ -1,5 +1,6 @@
 mod casual_date_time;
 mod deadline;
+mod exact_month_date;
 mod past_time;
 mod time;
 mod weekdays;

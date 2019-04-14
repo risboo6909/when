@@ -1,6 +1,6 @@
 use chrono::prelude::*;
 
-use crate::common_matchers::match_num;
+use super::DAYS_IN_MONTH;
 use crate::errors::DateTimeError;
 use crate::tokens::{Adverbs, Articles, IntWord, Priority, TimeInterval, Token, When};
 use crate::{consts, rules::RuleResult, stub, Dist, TokenDesc};
@@ -25,8 +25,6 @@ named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<CompleteStr<'a>>,
 );
 
 make_interpreter!(positions = 5);
-
-const DAYS_IN_MONTH: &[i32; 12] = &[31, 28, 29, 30, 31, 28, 31, 30, 30, 31, 29, 31];
 
 fn is_leap_year(year: i32) -> bool {
     year % 4 == 0 && year % 100 != 0 || year % 400 == 0
@@ -61,7 +59,7 @@ fn make_time(res: &mut RuleResult, local: DateTime<Local>, input: &str) {
     };
 
     // only A.C. dates are supported yet
-    if year_int < 0 {
+    if year_int <= 0 {
         res.set_error(DateTimeError::InvalidTime {
             msg: input.to_string(),
             what: "year".to_owned(),

@@ -1,4 +1,18 @@
-use chrono::format::StrftimeItems;
+#[derive(Debug, Clone, PartialEq)]
+pub enum Month {
+    January,
+    February,
+    March,
+    April,
+    May,
+    June,
+    July,
+    August,
+    September,
+    October,
+    November,
+    December,
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Weekday {
@@ -14,6 +28,11 @@ pub enum Weekday {
 #[derive(Debug, Clone, PartialEq)]
 pub enum Pronouns {
     This,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum Prepositions {
+    Of,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -83,6 +102,17 @@ pub enum Ordinals {
     Eighteenth,
     Nineteenth,
     Twentieth,
+    TwentyFirst,
+    TwentySecond,
+    TwentyThird,
+    TwentyFourth,
+    TwentyFifth,
+    TwentySixth,
+    TwentySeventh,
+    TwentyEighth,
+    TwentyNinth,
+    Thirtieth,
+    ThirtiethFirst,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -114,7 +144,10 @@ pub enum Token {
     Char, // stands for any character
     Week,
     Ago,
+    Prepositions(Prepositions),
+    Ordinals(Ordinals),
     Articles(Articles),
+    Month(Month),
     Weekday(Weekday),
     When(When),
     AmPm(AmPm),

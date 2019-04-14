@@ -186,11 +186,11 @@ named!(ltrim<CompleteStr, CompleteStr>,
 );
 
 /// Ignores whitespaces using "ltrim" and then consumes alphabetical characters in a string until
-/// any non alphabetical character appears or the string has been exhausted:
+/// any non alpha-numeric character appears or the string has been exhausted:
 ///
 /// "  , abracadabra  " -> "abracadabra"
 named!(tokenize_word<CompleteStr, CompleteStr>,
-    preceded!(ltrim, take_while!(|c: char| c == '.' || c.is_alphabetic()))
+    preceded!(ltrim, take_while!(|c: char| c == '.' || c.is_alphanumeric()))
 );
 
 /// Ignores whitespaces using "ltrim" and then consumes digits in a string until
