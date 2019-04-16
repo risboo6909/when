@@ -1,5 +1,6 @@
+use super::common::{is_leap_year, DAYS_IN_MONTH};
 use crate::common_matchers::match_ordinal;
-use crate::errors::DateTimeError;
+use crate::errors::DateTimeError as Err;
 use crate::tokens::{
     Adverbs, Articles, Month, Ordinals, Prepositions, Priority, TimeInterval, Token, When,
 };
@@ -104,11 +105,11 @@ define!(twelfth:
     [(Token::Ordinals(Ordinals::Twelfth), Priority(3)), "twelve", Dist(2)]
 );
 define!(thirteenth:
-    [(Token::Ordinals(Ordinals::Thirteenth), Priority(3)), "thirteenth", Dist(4)] |
+    [(Token::Ordinals(Ordinals::Thirteenth), Priority(3)), "thirteenth", Dist(3)] |
     [(Token::Ordinals(Ordinals::Thirteenth), Priority(3)), "thirteen", Dist(2)]
 );
 define!(fourteenth:
-    [(Token::Ordinals(Ordinals::Fourteenth), Priority(3)), "fourteenth", Dist(4)] |
+    [(Token::Ordinals(Ordinals::Fourteenth), Priority(3)), "fourteenth", Dist(3)] |
     [(Token::Ordinals(Ordinals::Fourteenth), Priority(3)), "fourteen", Dist(2)]
 );
 define!(fifteenth:
@@ -120,7 +121,7 @@ define!(sixteenth:
     [(Token::Ordinals(Ordinals::Sixteenth), Priority(3)), "sixteen", Dist(2)]
 );
 define!(seventeenth:
-    [(Token::Ordinals(Ordinals::Seventeenth), Priority(3)), "seventeenth", Dist(4)] |
+    [(Token::Ordinals(Ordinals::Seventeenth), Priority(3)), "seventeenth", Dist(3)] |
     [(Token::Ordinals(Ordinals::Seventeenth), Priority(3)), "seventeen", Dist(3)]
 );
 define!(eighteenth:
@@ -195,25 +196,45 @@ named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<CompleteStr<'a>>,
             // 31th of february, 1st of january
             tuple!(apply!(numeric_ord, exact_match), apply!(of, exact_match), apply!(month, exact_match),
                    stub) |
-            // 31th february, 1st january
+
+            // 31th december, 1st january
             tuple!(apply!(numeric_ord, exact_match), apply!(month, exact_match), stub, stub) |
-            // twentieth first of february (from 20 to 31 inclusive)
+            // february 21th, january 1st
+            tuple!(apply!(month, exact_match), apply!(numeric_ord, exact_match), stub, stub) |
+
+            // twentieth first of december (from 20 to 31 inclusive)
             tuple!(apply!(tens, exact_match), apply!(ordinal, exact_match), apply!(of, exact_match),
                    apply!(month, exact_match)) |
-            // eighteenth of february (from 1 to 19 inclusive)
+            // eighteenth of december (from 1 to 19 inclusive)
             tuple!(apply!(ordinal, exact_match), apply!(of, exact_match), apply!(month, exact_match),
                    stub) |
-            // twentieth first of february (from 20 to 31 inclusive)
+
+            // december of twentieth first (from 20 to 31 inclusive)
+            tuple!(apply!(month, exact_match), apply!(of, exact_match), apply!(tens, exact_match),
+                   apply!(ordinal, exact_match)) |
+            // december of eighteenth (from 1 to 19 inclusive)
+            tuple!(apply!(month, exact_match), apply!(of, exact_match), apply!(ordinal, exact_match),
+                   stub) |
+
+            // twentieth first december (from 20 to 31 inclusive)
             tuple!(apply!(tens, exact_match), apply!(ordinal, exact_match), apply!(month, exact_match),
                    stub) |
-            // eighteenth of february (from 1 to 19 inclusive)
+            // eighteenth december (from 1 to 19 inclusive)
             tuple!(apply!(ordinal, exact_match), apply!(month, exact_match), stub, stub) |
+
+            // december twentieth first (from 20 to 31 inclusive)
+            tuple!(apply!(month, exact_match), apply!(tens, exact_match), apply!(ordinal, exact_match),
+                   stub) |
+            // december eighteenth  (from 1 to 19 inclusive)
+            tuple!(apply!(month, exact_match), apply!(ordinal, exact_match), stub, stub) |
+
             // 4 march
             tuple!(day_num, apply!(month, exact_match), stub, stub) |
+            // march 4
+            tuple!(apply!(month, exact_match), day_num, stub, stub) |
+
             // january, december 
             tuple!(apply!(month, exact_match), stub, stub, stub)
-
-            // TODO: Add "march 4th"
         )
     )
 );
@@ -222,9 +243,10 @@ make_interpreter!(positions = 4);
 
 fn make_time(res: &mut RuleResult, local: DateTime<Local>, input: &str) {
     let mut tens = None;
+    let mut day = None;
 
     // day as a plain number
-    let mut day = res
+    day = res
         .token_by_priority(Priority(0))
         .map_or(None, |t| match t {
             Token::Number(n) => Some(n),
@@ -243,39 +265,33 @@ fn make_time(res: &mut RuleResult, local: DateTime<Local>, input: &str) {
         _ => unreachable!(),
     });
 
-    // TODO: Simplify code somehow
     if day.is_none() {
-        let ones = match_ordinal(res.token_by_priority(Priority(3)));
-        if let Some(t) = tens {
-            match ones {
-                // for numbers less than 10 - sum tens and ones
-                Some(x) if x < 10 => day = Some(x + t),
-                Some(x) => {
-                    res.set_error(DateTimeError::InvalidTime {
-                        msg: input.to_string(),
-                        what: "day".to_string(),
-                        value: x + t,
-                    });
-                    return;
-                }
-                None => day = tens,
+        day = tens;
+    }
+
+    if let Some(ones) = match_ordinal(res.token_by_priority(Priority(3))) as Option<i32> {
+        if tens.is_some() {
+            let tens = tens.unwrap();
+            if ones >= 10 {
+                res.set_error(Err::invalid_time_error(input, "day", ones + tens));
+                return;
             }
+            // for numbers less than 10 - sum tens and ones
+            day = Some(ones + tens)
         } else {
-            day = ones;
+            day = Some(ones);
         }
     }
 
-    let day_no = day.unwrap_or(1);
-    if day_no <= 0 {
-        res.set_error(DateTimeError::InvalidTime {
-            msg: input.to_string(),
-            what: "day".to_string(),
-            value: day_no,
-        });
+    // if day is omitted, assume it is 1st day of a month
+    let day = day.unwrap_or(1);
+
+    if day <= 0 {
+        res.set_error(Err::invalid_time_error(input, "day", day));
         return;
     }
 
-    res.set_day(day_no);
+    res.set_day(day);
 
     let token = res.token_by_priority(Priority(5));
     let month = token.map_or(1, |t| match t {
@@ -294,9 +310,24 @@ fn make_time(res: &mut RuleResult, local: DateTime<Local>, input: &str) {
         _ => unreachable!(),
     });
 
-    // TODO: Add days in month check
+    if month < 1 || month > 12 {
+        res.set_error(Err::invalid_time_error(input, "month", month));
+        return;
+    }
 
-    res.set_month(month);
+    let mut days_in_month = DAYS_IN_MONTH[month as usize - 1];
+
+    // 29 days in february for leap years
+    if month == 2 && is_leap_year(local.year()) {
+        days_in_month = 29;
+    }
+
+    if day > days_in_month {
+        res.set_error(Err::invalid_time_error(input, "day", day));
+        return;
+    }
+
+    res.set_month(month as i32);
 }
 
 #[cfg(test)]
@@ -355,6 +386,24 @@ mod tests {
                 value: -3,
             })
         );
+
+        let result = interpret("thirteen of february", false, fixed_time());
+        assert_eq!(result.get_day(), 13);
+        assert_eq!(result.get_month(), 2);
+
+        let result = interpret("31st february", false, fixed_time());
+        assert_eq!(
+            result.context,
+            Err(InvalidTime {
+                msg: "31st february".to_owned(),
+                what: "day".to_owned(),
+                value: 31,
+            })
+        );
+
+        let result = interpret("feb. 4", false, fixed_time());
+        assert_eq!(result.get_day(), 4);
+        assert_eq!(result.get_month(), 2);
     }
 
 }

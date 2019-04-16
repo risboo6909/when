@@ -1,6 +1,6 @@
 use chrono::prelude::*;
 
-use super::DAYS_IN_MONTH;
+use super::{is_leap_year, DAYS_IN_MONTH};
 use crate::errors::DateTimeError;
 use crate::tokens::{Adverbs, Articles, IntWord, Priority, TimeInterval, Token, When};
 use crate::{consts, rules::RuleResult, stub, Dist, TokenDesc};
@@ -25,10 +25,6 @@ named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<CompleteStr<'a>>,
 );
 
 make_interpreter!(positions = 5);
-
-fn is_leap_year(year: i32) -> bool {
-    year % 4 == 0 && year % 100 != 0 || year % 400 == 0
-}
 
 fn make_time(res: &mut RuleResult, local: DateTime<Local>, input: &str) {
     let mut year: Option<i32> = None;

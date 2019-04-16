@@ -1,3 +1,4 @@
+use crate::errors::DateTimeError::InvalidTime;
 use failure::Fail;
 
 pub(crate) const UNKNOWN: u32 = 1; // couldn't recognize token
@@ -12,4 +13,14 @@ pub enum DateTimeError {
         what: String,
         value: i32,
     },
+}
+
+impl DateTimeError {
+    pub fn invalid_time_error(msg: &str, what: &str, value: i32) -> DateTimeError {
+        InvalidTime {
+            msg: msg.to_owned(),
+            what: what.to_owned(),
+            value,
+        }
+    }
 }
