@@ -120,9 +120,9 @@ named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<CompleteStr<'a>>,
 
 make_interpreter!(positions = 4);
 
-fn make_time(
+fn make_time<Tz: TimeZone>(
     res: &RuleResult,
-    local: DateTime<Local>,
+    tz_aware: DateTime<Tz>,
     input: &str,
 ) -> Result<Context, DateTimeError> {
     let mut ctx = Context::default();
@@ -181,14 +181,14 @@ fn make_time(
                 if half {
                     ctx.set_duration(14 * consts::DAY);
                 } else {
-                    ctx.month = local.month() as i32 + num;
+                    ctx.month = tz_aware.month() as i32 + num;
                 }
             }
             Token::TimeInterval(TimeInterval::Year) => {
                 if half {
-                    ctx.month = local.month() as i32 + 6;
+                    ctx.month = tz_aware.month() as i32 + 6;
                 } else {
-                    ctx.year = local.year() + num;
+                    ctx.year = tz_aware.year() + num;
                 }
             }
             _ => (),

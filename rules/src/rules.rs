@@ -5,6 +5,7 @@ use std::convert::From;
 use crate::errors::DateTimeError;
 use crate::tokens::{PToken, Priority, TimeInterval, Token};
 use crate::Dist;
+use chrono::TimeZone;
 use failure::Fail;
 
 pub type MyResult<'a> = IResult<CompleteStr<'a>, TokenDesc>;
@@ -80,8 +81,8 @@ pub struct RuleResult<'a> {
     pub context: Context,
 }
 
-pub(crate) type FnRule =
-    for<'r> fn(&'r str, bool, DateTime<Local>) -> Result<RuleResult<'r>, DateTimeError>;
+pub(crate) type FnRule<Tz: TimeZone> =
+    for<'r> fn(&'r str, bool, DateTime<Tz>) -> Result<RuleResult<'r>, DateTimeError>;
 
 impl<'a> RuleResult<'a> {
     pub fn new() -> Self {

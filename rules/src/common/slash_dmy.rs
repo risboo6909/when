@@ -27,9 +27,9 @@ named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<CompleteStr<'a>>,
 
 make_interpreter!(positions = 5);
 
-fn make_time(
+fn make_time<Tz: TimeZone>(
     res: &RuleResult,
-    local: DateTime<Local>,
+    tz_aware: DateTime<Tz>,
     input: &str,
 ) -> Result<Context, DateTimeError> {
     let mut ctx = Context::default();
@@ -53,7 +53,7 @@ fn make_time(
     if let Some(Token::Number(n)) = token {
         year = n;
     } else {
-        year = local.year();
+        year = tz_aware.year();
     }
 
     // only A.C. dates are supported yet

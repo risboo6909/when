@@ -242,9 +242,9 @@ named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<CompleteStr<'a>>,
 
 make_interpreter!(positions = 4);
 
-fn make_time(
+fn make_time<Tz: TimeZone>(
     res: &RuleResult,
-    local: DateTime<Local>,
+    tz_aware: DateTime<Tz>,
     input: &str,
 ) -> Result<Context, DateTimeError> {
     let mut ctx = Context::default();
@@ -329,7 +329,7 @@ fn make_time(
     let mut days_in_month = DAYS_IN_MONTH[month as usize - 1];
 
     // 29 days in february for leap years
-    if month == 2 && is_leap_year(local.year()) {
+    if month == 2 && is_leap_year(tz_aware.year()) {
         days_in_month = 29;
     }
 

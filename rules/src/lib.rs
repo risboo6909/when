@@ -17,7 +17,7 @@ use nom::{
 };
 
 pub use crate::errors::DateTimeError;
-use chrono::Date;
+use chrono::{Date, DateTime, TimeZone};
 use strsim::damerau_levenshtein;
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
@@ -145,10 +145,10 @@ macro_rules! make_interpreter {
     ( positions = $n: expr ) => {
         use tuple::TupleElements;
 
-        pub(crate) fn interpret(
+        pub(crate) fn interpret<Tz: TimeZone>(
             input: &str,
             exact_match: bool,
-            local_time: DateTime<Local>,
+            tz: DateTime<Tz>,
         ) -> Result<RuleResult, DateTimeError> {
             let mut res = RuleResult::new();
             match parse(CompleteStr(input), exact_match) {
@@ -158,7 +158,7 @@ macro_rules! make_interpreter {
                         res.set_token(tt.get(idx).unwrap());
                     }
                     res.set_tail(*tail);
-                    match make_time(&res, local_time, input) {
+                    match make_time(&res, tz, input) {
                         Ok(ctx) => res.set_context(ctx),
                         Err(e) => return Err(e),
                     };
@@ -319,9 +319,11 @@ fn best_fit<'a>(
 /// input: "You can call me this friday or next monday."
 ///
 /// output will be as follows: [[When(This), Weekday(Friday)], [When(Next), Weekday(Monday)]]
-pub(crate) fn apply_generic(
+#[inline]
+pub(crate) fn apply_generic<Tz: TimeZone>(
+    tz: DateTime<Tz>,
     mut input: &str,
-    rules: &[FnRule],
+    rules: &[FnRule<Tz>],
     exact_match: bool,
 ) -> Vec<Result<MatchResult, DateTimeError>> {
     // empty vector of matched tokens
@@ -331,7 +333,7 @@ pub(crate) fn apply_generic(
     loop {
         let mut had_match = false;
         for rule in rules {
-            match rule(input, exact_match, Local::now()) {
+            match rule(input, exact_match, tz.clone()) {
                 Ok(RuleResult {
                     tail,
                     tokens,

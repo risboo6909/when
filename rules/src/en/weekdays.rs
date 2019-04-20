@@ -80,9 +80,9 @@ named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<CompleteStr<'a>>,
 
 make_interpreter!(positions = 3);
 
-fn make_time(
+fn make_time<Tz: TimeZone>(
     res: &RuleResult,
-    local: DateTime<Local>,
+    tz_aware: DateTime<Tz>,
     input: &str,
 ) -> Result<Context, DateTimeError> {
     let mut ctx = Context::default();
@@ -122,7 +122,7 @@ fn make_time(
     if token.is_some() {
         match token.unwrap() {
             Token::When(When::Next) => {
-                let delta = day - local.weekday() as i64;
+                let delta = day - tz_aware.weekday() as i64;
                 if delta > 0 {
                     ctx.set_duration(Duration::days(delta).num_seconds());
                 } else {
@@ -130,7 +130,7 @@ fn make_time(
                 }
             }
             Token::When(When::Last) | Token::When(When::Past) => {
-                let delta = local.weekday() as i64 - day;
+                let delta = tz_aware.weekday() as i64 - day;
                 if delta > 0 {
                     ctx.set_duration(-Duration::days(delta).num_seconds());
                 } else {
@@ -138,7 +138,7 @@ fn make_time(
                 }
             }
             Token::When(When::This) => {
-                let weekday = local.weekday() as i64;
+                let weekday = tz_aware.weekday() as i64;
                 if weekday <= day {
                     ctx.set_duration(Duration::days(day - weekday).num_seconds());
                 } else {

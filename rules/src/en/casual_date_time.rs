@@ -54,9 +54,9 @@ named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<CompleteStr<'a>>,
 
 make_interpreter!(positions = 2);
 
-fn make_time(
+fn make_time<Tz: TimeZone>(
     res: &RuleResult,
-    _local: DateTime<Local>,
+    _tz_aware: DateTime<Tz>,
     _input: &str,
 ) -> Result<Context, DateTimeError> {
     let mut ctx = Context::default();
