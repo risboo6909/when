@@ -6,16 +6,18 @@ mod tokens;
 pub mod rules;
 
 use crate::errors as my_errors;
-use crate::rules::{FnRule, MatchBounds, MatchResult, MyResult, RuleResult, TokenDesc};
+use crate::rules::{Context, FnRule, MatchBounds, MatchResult, MyResult, RuleResult, TokenDesc};
 use crate::tokens::{PToken, Token};
 
 use chrono::prelude::Local;
 use core::borrow::BorrowMut;
 use nom::{
     self, alt, char, map, map_res, named, named_args, opt, pair, preceded, recognize, tag,
-    take_while, types::CompleteStr, Context, ErrorKind, IResult,
+    take_while, types::CompleteStr, ErrorKind, IResult,
 };
 
+pub use crate::errors::DateTimeError;
+use chrono::Date;
 use strsim::damerau_levenshtein;
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
@@ -147,20 +149,19 @@ macro_rules! make_interpreter {
             input: &str,
             exact_match: bool,
             local_time: DateTime<Local>,
-        ) -> RuleResult {
+        ) -> Result<RuleResult, DateTimeError> {
             let mut res = RuleResult::new();
-
             match parse(CompleteStr(input), exact_match) {
                 Ok((tail, (skipped, tt))) => {
-                    let bounds = crate::match_bounds(skipped, input, tail);
-
-                    res.set_bounds(Some(bounds));
+                    res.set_bounds(Some(crate::match_bounds(skipped, input, tail)));
                     for idx in 0..$n {
                         res.set_token(tt.get(idx).unwrap());
                     }
                     res.set_tail(*tail);
-
-                    make_time(&mut res, local_time, input);
+                    match make_time(&res, local_time, input) {
+                        Ok(ctx) => res.set_context(ctx),
+                        Err(e) => return Err(e),
+                    };
                 }
                 Err(nom::Err::Error(nom::Context::Code(ref input, nom::ErrorKind::ManyTill))) => {
                     res.set_tail(input);
@@ -168,7 +169,7 @@ macro_rules! make_interpreter {
                 _ => unreachable!(),
             }
 
-            res
+            Ok(res)
         }
     };
 }
@@ -243,7 +244,7 @@ fn stub(input: CompleteStr) -> MyResult {
 
 #[inline]
 fn wrap_error(input: CompleteStr, error_code: u32) -> MyResult {
-    Err(nom::Err::Error(Context::Code(
+    Err(nom::Err::Error(nom::simple_errors::Context::Code(
         input,
         ErrorKind::Custom(error_code),
     )))
@@ -322,7 +323,7 @@ pub(crate) fn apply_generic(
     mut input: &str,
     rules: &[FnRule],
     exact_match: bool,
-) -> Vec<MatchResult> {
+) -> Vec<Result<MatchResult, DateTimeError>> {
     // empty vector of matched tokens
     let mut matched_tokens = Vec::new();
     let mut end_of_last_match_idx = 0;
@@ -331,25 +332,31 @@ pub(crate) fn apply_generic(
         let mut had_match = false;
         for rule in rules {
             match rule(input, exact_match, Local::now()) {
-                RuleResult {
+                Ok(RuleResult {
                     tail,
-                    tokens: _,
+                    tokens,
                     bounds: Some(bounds),
                     context,
-                } => {
+                }) => {
                     // applied rule had a match
-                    matched_tokens.push(MatchResult::new(
+                    matched_tokens.push(Ok(MatchResult::new(
                         context,
                         end_of_last_match_idx + bounds.start_idx,
                         end_of_last_match_idx + bounds.end_idx,
-                    ));
+                    )));
                     // continue with the rest of the string
                     had_match = true;
                     input = tail;
                     end_of_last_match_idx += bounds.end_idx;
                     break;
                 }
-                _ => continue,
+                Ok(RuleResult {
+                    tail,
+                    tokens,
+                    bounds: None,
+                    context,
+                }) => continue,
+                Err(err) => matched_tokens.push(Err(err)),
             }
         }
 

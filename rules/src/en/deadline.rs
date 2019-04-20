@@ -1,5 +1,6 @@
 use chrono::prelude::*;
 
+use super::super::Context;
 use crate::common_matchers::match_num;
 use crate::errors::DateTimeError;
 use crate::tokens::{Adverbs, Articles, IntWord, Priority, TimeInterval, Token, When};
@@ -119,71 +120,82 @@ named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<CompleteStr<'a>>,
 
 make_interpreter!(positions = 4);
 
-fn make_time(res: &mut RuleResult, local: DateTime<Local>, input: &str) {
+fn make_time(
+    res: &RuleResult,
+    local: DateTime<Local>,
+    input: &str,
+) -> Result<Context, DateTimeError> {
+    let mut ctx = Context::default();
+
     let mut half = false;
     let mut num: i32 = 1;
 
     let token = res.token_by_priority(Priority(0));
 
-    token.map_or((), |t| match t {
-        Token::Adverbs(Adverbs::Few) => num = 3,
-        Token::Adverbs(Adverbs::Half) => half = true,
-        _ => unreachable!(),
-    });
+    if token.is_some() {
+        match token.unwrap() {
+            Token::Adverbs(Adverbs::Few) => num = 3,
+            Token::Adverbs(Adverbs::Half) => half = true,
+            _ => (),
+        }
+    }
 
     let num = match_num(res.token_by_priority(Priority(3))).unwrap_or(num);
 
     if num < 0 {
-        res.set_error(DateTimeError::InvalidTime {
+        return Err(DateTimeError::InvalidTime {
             msg: input.to_string(),
             what: "number".to_owned(),
             value: num,
         });
-        return;
     }
 
     let token = res.token_by_priority(Priority(4));
 
-    token.map_or((), |t| match t {
-        Token::TimeInterval(TimeInterval::Second) => {
-            res.set_duration(num);
-        }
-        Token::TimeInterval(TimeInterval::Minute) => res.set_duration(if half {
-            30 * consts::SECOND
-        } else {
-            num * consts::MINUTE
-        }),
-        Token::TimeInterval(TimeInterval::Hour) => res.set_duration(if half {
-            30 * consts::MINUTE
-        } else {
-            num * consts::HOUR
-        }),
-        Token::TimeInterval(TimeInterval::Day) => res.set_duration(if half {
-            12 * consts::HOUR
-        } else {
-            num * consts::DAY
-        }),
-        Token::TimeInterval(TimeInterval::Week) => res.set_duration(if half {
-            7 * 12 * consts::HOUR
-        } else {
-            num * consts::WEEK
-        }),
-        Token::TimeInterval(TimeInterval::Month) => {
-            if half {
-                res.set_duration(14 * consts::DAY);
-            } else {
-                res.set_month(local.month() as i32 + num);
+    if token.is_some() {
+        match token.unwrap() {
+            Token::TimeInterval(TimeInterval::Second) => {
+                ctx.set_duration(num);
             }
-        }
-        Token::TimeInterval(TimeInterval::Year) => {
-            if half {
-                res.set_month(local.month() as i32 + 6);
+            Token::TimeInterval(TimeInterval::Minute) => ctx.set_duration(if half {
+                30 * consts::SECOND
             } else {
-                res.set_year(local.year() + num);
+                num * consts::MINUTE
+            }),
+            Token::TimeInterval(TimeInterval::Hour) => ctx.set_duration(if half {
+                30 * consts::MINUTE
+            } else {
+                num * consts::HOUR
+            }),
+            Token::TimeInterval(TimeInterval::Day) => ctx.set_duration(if half {
+                12 * consts::HOUR
+            } else {
+                num * consts::DAY
+            }),
+            Token::TimeInterval(TimeInterval::Week) => ctx.set_duration(if half {
+                7 * 12 * consts::HOUR
+            } else {
+                num * consts::WEEK
+            }),
+            Token::TimeInterval(TimeInterval::Month) => {
+                if half {
+                    ctx.set_duration(14 * consts::DAY);
+                } else {
+                    ctx.month = local.month() as i32 + num;
+                }
             }
+            Token::TimeInterval(TimeInterval::Year) => {
+                if half {
+                    ctx.month = local.month() as i32 + 6;
+                } else {
+                    ctx.year = local.year() + num;
+                }
+            }
+            _ => (),
         }
-        _ => unreachable!(),
-    });
+    }
+
+    Ok(ctx)
 }
 
 #[cfg(test)]
@@ -200,52 +212,54 @@ mod tests {
 
     #[test]
     fn test_deadline() {
-        let result = interpret("in 2 months", false, fixed_time());
+        let result = interpret("in 2 months", false, fixed_time()).unwrap();
         assert_eq!(result.get_month(), 3);
 
-        let result = interpret("in three months", false, fixed_time());
+        let result = interpret("in three months", false, fixed_time()).unwrap();
         assert_eq!(result.get_month(), 4);
 
-        let result = interpret("in a half year", false, fixed_time());
+        let result = interpret("in a half year", false, fixed_time()).unwrap();
         assert_eq!(result.get_month(), 7);
 
-        let result = interpret("in the few days", false, fixed_time());
+        let result = interpret("in the few days", false, fixed_time()).unwrap();
         assert_eq!(result.get_duration_sec(), 3 * consts::DAY as i64);
 
-        let result = interpret("in 5 minutes", false, fixed_time());
+        let result = interpret("in 5 minutes", false, fixed_time()).unwrap();
         assert_eq!(result.get_duration_sec(), 5 * consts::MINUTE as i64);
 
-        let result = interpret("in 5 minutes I will go home", false, fixed_time());
+        let result = interpret("in 5 minutes I will go home", false, fixed_time()).unwrap();
         assert_eq!(result.get_duration_sec(), 5 * consts::MINUTE as i64);
 
         let result = interpret("in -3 minute", false, fixed_time());
         assert_eq!(
-            result.context,
-            Err(InvalidTime {
+            result.unwrap_err(),
+            InvalidTime {
                 msg: "in -3 minute".to_owned(),
                 what: "number".to_owned(),
                 value: -3,
-            })
+            }
         );
 
         let result = interpret(
             "we have to do something within 10 days.",
             false,
             fixed_time(),
-        );
+        )
+        .unwrap();
         assert_eq!(result.get_duration_sec(), 10 * consts::DAY as i64);
 
         let result = interpret(
             "we have to do something within five days.",
             false,
             fixed_time(),
-        );
+        )
+        .unwrap();
         assert_eq!(result.get_duration_sec(), 5 * consts::DAY as i64);
 
-        let result = interpret("in a half year", false, fixed_time());
+        let result = interpret("in a half year", false, fixed_time()).unwrap();
         assert_eq!(result.get_month(), 7);
 
-        let result = interpret("drop me a line in a half hour", false, fixed_time());
+        let result = interpret("drop me a line in a half hour", false, fixed_time()).unwrap();
         assert_eq!(result.get_duration_sec(), 30 * consts::MINUTE as i64);
     }
 }

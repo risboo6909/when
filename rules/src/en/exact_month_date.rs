@@ -1,6 +1,7 @@
+use super::super::Context;
 use super::common::{is_leap_year, DAYS_IN_MONTH};
 use crate::common_matchers::match_ordinal;
-use crate::errors::DateTimeError as Err;
+use crate::errors::DateTimeError;
 use crate::tokens::{
     Adverbs, Articles, Month, Ordinals, Prepositions, Priority, TimeInterval, Token, When,
 };
@@ -241,17 +242,21 @@ named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<CompleteStr<'a>>,
 
 make_interpreter!(positions = 4);
 
-fn make_time(res: &mut RuleResult, local: DateTime<Local>, input: &str) {
+fn make_time(
+    res: &RuleResult,
+    local: DateTime<Local>,
+    input: &str,
+) -> Result<Context, DateTimeError> {
+    let mut ctx = Context::default();
+
     let mut tens = None;
     let mut day = None;
 
     // day as a plain number
-    day = res
-        .token_by_priority(Priority(0))
-        .map_or(None, |t| match t {
-            Token::Number(n) => Some(n),
-            _ => unreachable!(),
-        });
+    let token = res.token_by_priority(Priority(0));
+    if let Some(Token::Number(n)) = token {
+        day = Some(n);
+    }
 
     // day as ordinal 1st, 2nd, 3rd, etc.
     if day.is_none() {
@@ -259,11 +264,14 @@ fn make_time(res: &mut RuleResult, local: DateTime<Local>, input: &str) {
     }
 
     // human readable form, i.e. twenty two, etc.
-    res.token_by_priority(Priority(2)).map_or((), |t| match t {
-        Token::Ordinals(Ordinals::Twentieth) => tens = Some(20),
-        Token::Ordinals(Ordinals::Thirtieth) => tens = Some(30),
-        _ => unreachable!(),
-    });
+    let token = res.token_by_priority(Priority(2));
+    if token.is_some() {
+        match token.unwrap() {
+            Token::Ordinals(Ordinals::Twentieth) => tens = Some(20),
+            Token::Ordinals(Ordinals::Thirtieth) => tens = Some(30),
+            _ => unreachable!(),
+        }
+    }
 
     if day.is_none() {
         day = tens;
@@ -271,13 +279,15 @@ fn make_time(res: &mut RuleResult, local: DateTime<Local>, input: &str) {
 
     if let Some(ones) = match_ordinal(res.token_by_priority(Priority(3))) as Option<i32> {
         if tens.is_some() {
-            let tens = tens.unwrap();
             if ones >= 10 {
-                res.set_error(Err::invalid_time_error(input, "day", ones + tens));
-                return;
+                return Err(DateTimeError::invalid_time_error(
+                    input,
+                    "day",
+                    ones + tens.unwrap(),
+                ));
             }
             // for numbers less than 10 - sum tens and ones
-            day = Some(ones + tens)
+            day = Some(ones + tens.unwrap())
         } else {
             day = Some(ones);
         }
@@ -285,34 +295,35 @@ fn make_time(res: &mut RuleResult, local: DateTime<Local>, input: &str) {
 
     // if day is omitted, assume it is 1st day of a month
     let day = day.unwrap_or(1);
-
     if day <= 0 {
-        res.set_error(Err::invalid_time_error(input, "day", day));
-        return;
+        return Err(DateTimeError::invalid_time_error(input, "day", day));
     }
 
-    res.set_day(day);
+    ctx.day = day;
+
+    let mut month = 1;
 
     let token = res.token_by_priority(Priority(5));
-    let month = token.map_or(1, |t| match t {
-        Token::Month(Month::January) => 1,
-        Token::Month(Month::February) => 2,
-        Token::Month(Month::March) => 3,
-        Token::Month(Month::April) => 4,
-        Token::Month(Month::May) => 5,
-        Token::Month(Month::June) => 6,
-        Token::Month(Month::July) => 7,
-        Token::Month(Month::August) => 8,
-        Token::Month(Month::September) => 9,
-        Token::Month(Month::October) => 10,
-        Token::Month(Month::November) => 11,
-        Token::Month(Month::December) => 12,
-        _ => unreachable!(),
-    });
+    if token.is_some() {
+        month = match token.unwrap() {
+            Token::Month(Month::January) => 1,
+            Token::Month(Month::February) => 2,
+            Token::Month(Month::March) => 3,
+            Token::Month(Month::April) => 4,
+            Token::Month(Month::May) => 5,
+            Token::Month(Month::June) => 6,
+            Token::Month(Month::July) => 7,
+            Token::Month(Month::August) => 8,
+            Token::Month(Month::September) => 9,
+            Token::Month(Month::October) => 10,
+            Token::Month(Month::November) => 11,
+            Token::Month(Month::December) => 12,
+            _ => 1,
+        }
+    };
 
     if month < 1 || month > 12 {
-        res.set_error(Err::invalid_time_error(input, "month", month));
-        return;
+        return Err(DateTimeError::invalid_time_error(input, "month", month));
     }
 
     let mut days_in_month = DAYS_IN_MONTH[month as usize - 1];
@@ -323,11 +334,12 @@ fn make_time(res: &mut RuleResult, local: DateTime<Local>, input: &str) {
     }
 
     if day > days_in_month {
-        res.set_error(Err::invalid_time_error(input, "day", day));
-        return;
+        return Err(DateTimeError::invalid_time_error(input, "day", day));
     }
 
-    res.set_month(month as i32);
+    ctx.month = month;
+
+    Ok(ctx)
 }
 
 #[cfg(test)]
@@ -344,64 +356,64 @@ mod tests {
 
     #[test]
     fn test_exact_month() {
-        let result = interpret("3rd march", false, fixed_time());
+        let result = interpret("3rd march", false, fixed_time()).unwrap();
         assert_eq!(result.get_day(), 3);
         assert_eq!(result.get_month(), 3);
 
-        let result = interpret("3rd of march", false, fixed_time());
+        let result = interpret("3rd of march", false, fixed_time()).unwrap();
         assert_eq!(result.get_day(), 3);
         assert_eq!(result.get_month(), 3);
 
-        let result = interpret("3 march", false, fixed_time());
+        let result = interpret("3 march", false, fixed_time()).unwrap();
         assert_eq!(result.get_day(), 3);
         assert_eq!(result.get_month(), 3);
 
-        let result = interpret("twenty seventh of april", false, fixed_time());
+        let result = interpret("twenty seventh of april", false, fixed_time()).unwrap();
         assert_eq!(result.get_day(), 27);
         assert_eq!(result.get_month(), 4);
 
-        let result = interpret("thirtieth of december", false, fixed_time());
+        let result = interpret("thirtieth of december", false, fixed_time()).unwrap();
         assert_eq!(result.get_day(), 30);
         assert_eq!(result.get_month(), 12);
 
-        let result = interpret("december", false, fixed_time());
+        let result = interpret("december", false, fixed_time()).unwrap();
         assert_eq!(result.get_month(), 12);
 
         let result = interpret("twenty fourteen of april", false, fixed_time());
         assert_eq!(
-            result.context,
-            Err(InvalidTime {
+            result.unwrap_err(),
+            InvalidTime {
                 msg: "twenty fourteen of april".to_owned(),
                 what: "day".to_owned(),
                 value: 34,
-            })
+            }
         );
 
         let result = interpret("-3 march", false, fixed_time());
         assert_eq!(
-            result.context,
-            Err(InvalidTime {
+            result.unwrap_err(),
+            InvalidTime {
                 msg: "-3 march".to_owned(),
                 what: "day".to_owned(),
                 value: -3,
-            })
+            }
         );
 
-        let result = interpret("thirteen of february", false, fixed_time());
+        let result = interpret("thirteen of february", false, fixed_time()).unwrap();
         assert_eq!(result.get_day(), 13);
         assert_eq!(result.get_month(), 2);
 
         let result = interpret("31st february", false, fixed_time());
         assert_eq!(
-            result.context,
-            Err(InvalidTime {
+            result.unwrap_err(),
+            InvalidTime {
                 msg: "31st february".to_owned(),
                 what: "day".to_owned(),
                 value: 31,
-            })
+            }
         );
 
-        let result = interpret("feb. 4", false, fixed_time());
+        let result = interpret("feb. 4", false, fixed_time()).unwrap();
         assert_eq!(result.get_day(), 4);
         assert_eq!(result.get_month(), 2);
     }

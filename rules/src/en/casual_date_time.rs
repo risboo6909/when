@@ -1,12 +1,13 @@
-use chrono::prelude::*;
-use time::Duration;
-
+use super::super::Context;
+use crate::errors::DateTimeError;
 use crate::tokens::{Priority, Pronouns, TimeOfDay, Token, When};
 use crate::{
     consts,
     rules::{MatchBounds, RuleResult},
     stub, Dist, TokenDesc,
 };
+use chrono::prelude::*;
+use time::Duration;
 
 use nom::{alt, apply, call, many_till, named_args, take, tuple, types::CompleteStr};
 
@@ -53,48 +54,59 @@ named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<CompleteStr<'a>>,
 
 make_interpreter!(positions = 2);
 
-fn make_time(res: &mut RuleResult, _local: DateTime<Local>, _input: &str) {
+fn make_time(
+    res: &RuleResult,
+    _local: DateTime<Local>,
+    _input: &str,
+) -> Result<Context, DateTimeError> {
+    let mut ctx = Context::default();
     let token = res.token_by_priority(Priority(1));
 
-    token.map_or((), |t| match t {
-        Token::When(When::Last) => {
-            res.set_hour(23);
-            res.set_duration(-24 * consts::HOUR as i64);
+    if token.is_some() {
+        match token.unwrap() {
+            Token::When(When::Last) => {
+                ctx.hour = 23;
+                ctx.set_duration(-24 * consts::HOUR as i64);
+            }
+            Token::When(When::Tomorrow) => {
+                ctx.set_duration(24 * consts::HOUR as i64);
+            }
+            Token::When(When::Yesterday) => {
+                ctx.set_duration(-24 * consts::HOUR as i64);
+            }
+            Token::When(When::Tonight) => {
+                ctx.hour = 23;
+                ctx.minute = 0;
+            }
+            _ => (),
         }
-        Token::When(When::Tomorrow) => {
-            res.set_duration(24 * consts::HOUR as i64);
-        }
-        Token::When(When::Yesterday) => {
-            res.set_duration(-24 * consts::HOUR as i64);
-        }
-        Token::When(When::Tonight) => {
-            res.set_hour(23);
-            res.set_minute(0);
-        }
-        _ => (),
-    });
+    }
 
     let token = res.token_by_priority(Priority(2));
 
-    token.map_or((), |t| match t {
-        Token::TimeOfDay(TimeOfDay::Morning) => {
-            res.set_hour(8);
-            res.set_minute(0);
+    if token.is_some() {
+        match token.unwrap() {
+            Token::TimeOfDay(TimeOfDay::Morning) => {
+                ctx.hour = 8;
+                ctx.minute = 0;
+            }
+            Token::TimeOfDay(TimeOfDay::Noon) => {
+                ctx.hour = 12;
+                ctx.minute = 0;
+            }
+            Token::TimeOfDay(TimeOfDay::Evening) => {
+                ctx.hour = 18;
+                ctx.minute = 0;
+            }
+            Token::TimeOfDay(TimeOfDay::Night) => {
+                ctx.hour = 23;
+                ctx.minute = 0;
+            }
+            _ => (),
         }
-        Token::TimeOfDay(TimeOfDay::Noon) => {
-            res.set_hour(12);
-            res.set_minute(0);
-        }
-        Token::TimeOfDay(TimeOfDay::Evening) => {
-            res.set_hour(18);
-            res.set_minute(0);
-        }
-        Token::TimeOfDay(TimeOfDay::Night) => {
-            res.set_hour(23);
-            res.set_minute(0);
-        }
-        _ => (),
-    });
+    }
+
+    Ok(ctx)
 }
 
 #[cfg(test)]
@@ -110,7 +122,7 @@ mod tests {
 
     #[test]
     fn test_casual_date() {
-        let result = interpret("The deadline is now, ok", false, fixed_time());
+        let result = interpret("The deadline is now, ok", false, fixed_time()).unwrap();
         assert_eq!(
             result.bounds,
             Some(MatchBounds {
@@ -120,7 +132,7 @@ mod tests {
         );
         assert_eq!(result.get_duration_sec(), 0);
 
-        let result = interpret("The deadline is today", false, fixed_time());
+        let result = interpret("The deadline is today", false, fixed_time()).unwrap();
         assert_eq!(
             result.bounds,
             Some(MatchBounds {
@@ -130,7 +142,7 @@ mod tests {
         );
         assert_eq!(result.get_duration_sec(), 0);
 
-        let result = interpret("The deadline is tonight", false, fixed_time());
+        let result = interpret("The deadline is tonight", false, fixed_time()).unwrap();
         assert_eq!(
             result.bounds,
             Some(MatchBounds {
@@ -141,7 +153,7 @@ mod tests {
         assert_eq!(result.get_hours(), 23);
         assert_eq!(result.get_minutes(), 0);
 
-        let result = interpret("The deadline is tomorrow", false, fixed_time());
+        let result = interpret("The deadline is tomorrow", false, fixed_time()).unwrap();
         assert_eq!(
             result.bounds,
             Some(MatchBounds {
@@ -151,7 +163,7 @@ mod tests {
         );
         assert_eq!(result.get_duration_sec(), 24 * consts::HOUR as i64);
 
-        let result = interpret("The deadline was yesterday", false, fixed_time());
+        let result = interpret("The deadline was yesterday", false, fixed_time()).unwrap();
         assert_eq!(
             result.bounds,
             Some(MatchBounds {
@@ -161,7 +173,7 @@ mod tests {
         );
         assert_eq!(result.get_duration_sec(), -24 * consts::HOUR as i64);
 
-        let result = interpret("Please call me tomorrow evening", false, fixed_time());
+        let result = interpret("Please call me tomorrow evening", false, fixed_time()).unwrap();
         assert_eq!(
             result.bounds,
             Some(MatchBounds {
@@ -172,7 +184,7 @@ mod tests {
         assert_eq!(result.get_duration_sec(), 24 * consts::HOUR as i64);
         assert_eq!(result.get_hours(), 18);
 
-        let result = interpret("He told me that yesterday morning", false, fixed_time());
+        let result = interpret("He told me that yesterday morning", false, fixed_time()).unwrap();
         assert_eq!(
             result.bounds,
             Some(MatchBounds {
@@ -183,7 +195,7 @@ mod tests {
         assert_eq!(result.get_duration_sec(), -24 * consts::HOUR as i64);
         assert_eq!(result.get_hours(), 8);
 
-        let result = interpret("Last night I fell asleep", false, fixed_time());
+        let result = interpret("Last night I fell asleep", false, fixed_time()).unwrap();
         assert_eq!(
             result.bounds,
             Some(MatchBounds {

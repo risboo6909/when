@@ -1,5 +1,6 @@
 use chrono::prelude::*;
 
+use super::super::Context;
 use crate::errors::DateTimeError;
 use crate::tokens::{AmPm, Priority, Token, When};
 use crate::{consts, rules::RuleResult, stub, Dist, TokenDesc};
@@ -46,7 +47,12 @@ named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<CompleteStr<'a>>,
 
 make_interpreter!(positions = 4);
 
-fn make_time(res: &mut RuleResult, _local: DateTime<Local>, input: &str) {
+fn make_time(
+    res: &RuleResult,
+    _local: DateTime<Local>,
+    input: &str,
+) -> Result<Context, DateTimeError> {
+    let mut ctx = Context::default();
     let mut hrs: i32 = 0;
 
     let token = res.token_by_priority(Priority(0));
@@ -57,23 +63,21 @@ fn make_time(res: &mut RuleResult, _local: DateTime<Local>, input: &str) {
     let token = res.token_by_priority(Priority(2));
     if let Some(Token::Number(minutes)) = token {
         if minutes > 59 {
-            res.context = Err(DateTimeError::InvalidTime {
+            return Err(DateTimeError::InvalidTime {
                 msg: input.to_string(),
                 what: "minutes".to_string(),
                 value: minutes,
             });
-            return;
         }
 
         if hrs <= 23 {
-            res.set_minute(minutes);
+            ctx.minute = minutes;
         } else {
-            res.set_error(DateTimeError::InvalidTime {
+            return Err(DateTimeError::InvalidTime {
                 msg: input.to_string(),
                 what: "hours".to_string(),
                 value: hrs,
             });
-            return;
         }
     }
 
@@ -88,7 +92,9 @@ fn make_time(res: &mut RuleResult, _local: DateTime<Local>, input: &str) {
         _ => (),
     });
 
-    res.set_hour(hrs);
+    ctx.hour = hrs;
+
+    Ok(ctx)
 }
 
 #[cfg(test)]
@@ -104,7 +110,7 @@ mod tests {
 
     #[test]
     fn test_hours_pm() {
-        let result = interpret("5pm", false, fixed_time());
+        let result = interpret("5pm", false, fixed_time()).unwrap();
         assert_eq!(
             result.bounds,
             Some(MatchBounds {
@@ -114,7 +120,7 @@ mod tests {
         );
         assert_eq!(result.get_hours(), 17);
 
-        let result = interpret("at 5 pm", false, fixed_time());
+        let result = interpret("at 5 pm", false, fixed_time()).unwrap();
         assert_eq!(
             result.bounds,
             Some(MatchBounds {
@@ -124,7 +130,7 @@ mod tests {
         );
         assert_eq!(result.get_hours(), 17);
 
-        let result = interpret("at 12 p.", false, fixed_time());
+        let result = interpret("at 12 p.", false, fixed_time()).unwrap();
         assert_eq!(
             result.bounds,
             Some(MatchBounds {
@@ -134,7 +140,7 @@ mod tests {
         );
 
         assert_eq!(result.get_hours(), 0);
-        let result = interpret("at 11p.m.", false, fixed_time());
+        let result = interpret("at 11p.m.", false, fixed_time()).unwrap();
         assert_eq!(
             result.bounds,
             Some(MatchBounds {
@@ -147,7 +153,7 @@ mod tests {
 
     #[test]
     fn test_hours_am() {
-        let result = interpret("5am", false, fixed_time());
+        let result = interpret("5am", false, fixed_time()).unwrap();
         assert_eq!(
             result.bounds,
             Some(MatchBounds {
@@ -157,7 +163,7 @@ mod tests {
         );
         assert_eq!(result.get_hours(), 5);
 
-        let result = interpret("at 5 a.m.", false, fixed_time());
+        let result = interpret("at 5 a.m.", false, fixed_time()).unwrap();
         assert_eq!(
             result.bounds,
             Some(MatchBounds {
@@ -167,7 +173,7 @@ mod tests {
         );
         assert_eq!(result.get_hours(), 5);
 
-        let result = interpret("at 12 a.", false, fixed_time());
+        let result = interpret("at 12 a.", false, fixed_time()).unwrap();
         assert_eq!(
             result.bounds,
             Some(MatchBounds {
@@ -180,7 +186,7 @@ mod tests {
 
     #[test]
     fn test_with_minutes() {
-        let result = interpret("5:30am", false, fixed_time());
+        let result = interpret("5:30am", false, fixed_time()).unwrap();
         assert_eq!(
             result.bounds,
             Some(MatchBounds {
@@ -191,7 +197,7 @@ mod tests {
         assert_eq!(result.get_hours(), 5);
         assert_eq!(result.get_minutes(), 30);
 
-        let result = interpret("5:59 pm", false, fixed_time());
+        let result = interpret("5:59 pm", false, fixed_time()).unwrap();
         assert_eq!(
             result.bounds,
             Some(MatchBounds {
@@ -202,7 +208,7 @@ mod tests {
         assert_eq!(result.get_hours(), 17);
         assert_eq!(result.get_minutes(), 59);
 
-        let result = interpret("17-59 pm", false, fixed_time());
+        let result = interpret("17-59 pm", false, fixed_time()).unwrap();
         assert_eq!(
             result.bounds,
             Some(MatchBounds {
@@ -213,7 +219,7 @@ mod tests {
         assert_eq!(result.get_hours(), 17);
         assert_eq!(result.get_minutes(), 59);
 
-        let result = interpret("up to 11-10 pm", false, fixed_time());
+        let result = interpret("up to 11-10 pm", false, fixed_time()).unwrap();
         assert_eq!(
             result.bounds,
             Some(MatchBounds {
@@ -224,7 +230,7 @@ mod tests {
         assert_eq!(result.get_hours(), 23);
         assert_eq!(result.get_minutes(), 10);
 
-        let result = interpret("it is 10:30 o'clock", false, fixed_time());
+        let result = interpret("it is 10:30 o'clock", false, fixed_time()).unwrap();
         assert_eq!(
             result.bounds,
             Some(MatchBounds {
@@ -240,22 +246,22 @@ mod tests {
     fn test_wrong_times() {
         let result = interpret("24:10", false, fixed_time());
         assert_eq!(
-            result.context,
-            Err(InvalidTime {
+            result.unwrap_err(),
+            InvalidTime {
                 msg: "24:10".to_string(),
                 what: "hours".to_string(),
                 value: 24,
-            })
+            }
         );
 
         let result = interpret("12:60", false, fixed_time());
         assert_eq!(
-            result.context,
-            Err(InvalidTime {
+            result.unwrap_err(),
+            InvalidTime {
                 msg: "12:60".to_string(),
                 what: "minutes".to_string(),
                 value: 60,
-            })
+            }
         );
     }
 

@@ -1,5 +1,6 @@
 use chrono::prelude::*;
 
+use super::super::Context;
 use crate::common_matchers::match_num;
 use crate::errors::DateTimeError;
 use crate::tokens::{Adverbs, Articles, IntWord, Priority, TimeInterval, Token};
@@ -74,7 +75,12 @@ named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<CompleteStr<'a>>,
 
 make_interpreter!(positions = 4);
 
-fn make_time(res: &mut RuleResult, local: DateTime<Local>, input: &str) {
+fn make_time(
+    res: &RuleResult,
+    local: DateTime<Local>,
+    input: &str,
+) -> Result<Context, DateTimeError> {
+    let mut ctx = Context::default();
     let mut num = 0;
     let mut half = false;
 
@@ -101,55 +107,64 @@ fn make_time(res: &mut RuleResult, local: DateTime<Local>, input: &str) {
     }
 
     if num < 0 {
-        res.set_error(DateTimeError::InvalidTime {
+        return Err(DateTimeError::InvalidTime {
             msg: input.to_string(),
             what: "number".to_owned(),
             value: num,
         });
-        return;
     }
 
     let token = res.token_by_priority(Priority(1));
     token.map_or((), |t| match t {
         Token::TimeInterval(TimeInterval::Second) => {
-            res.set_duration(-num);
+            ctx.set_duration(-num);
         }
-        Token::TimeInterval(TimeInterval::Minute) => res.set_duration(if half {
-            -30 * consts::SECOND
-        } else {
-            -num * consts::MINUTE
-        }),
-        Token::TimeInterval(TimeInterval::Hour) => res.set_duration(if half {
-            -30 * consts::MINUTE
-        } else {
-            -num * consts::HOUR
-        }),
-        Token::TimeInterval(TimeInterval::Day) => res.set_duration(if half {
-            -12 * consts::HOUR
-        } else {
-            -num * consts::DAY
-        }),
-        Token::TimeInterval(TimeInterval::Week) => res.set_duration(if half {
-            -7 * 12 * consts::HOUR
-        } else {
-            -num * consts::WEEK
-        }),
+        Token::TimeInterval(TimeInterval::Minute) => {
+            ctx.set_duration(if half {
+                -30 * consts::SECOND
+            } else {
+                -num * consts::MINUTE
+            });
+        }
+        Token::TimeInterval(TimeInterval::Hour) => {
+            ctx.set_duration(if half {
+                -30 * consts::MINUTE
+            } else {
+                -num * consts::HOUR
+            });
+        }
+        Token::TimeInterval(TimeInterval::Day) => {
+            ctx.set_duration(if half {
+                -12 * consts::HOUR
+            } else {
+                -num * consts::DAY
+            });
+        }
+        Token::TimeInterval(TimeInterval::Week) => {
+            ctx.set_duration(if half {
+                -7 * 12 * consts::HOUR
+            } else {
+                -num * consts::WEEK
+            });
+        }
         Token::TimeInterval(TimeInterval::Month) => {
             if half {
-                res.set_duration(-14 * consts::DAY);
+                ctx.set_duration(-14 * consts::DAY);
             } else {
-                res.set_month(local.month() as i32 - num);
+                ctx.month = local.month() as i32 - num;
             }
         }
         Token::TimeInterval(TimeInterval::Year) => {
             if half {
-                res.set_month(local.month() as i32 - 6);
+                ctx.month = local.month() as i32 - 6;
             } else {
-                res.set_year(local.year() - num);
+                ctx.year = local.year() - num;
             }
         }
         _ => unreachable!(),
     });
+
+    Ok(ctx)
 }
 
 #[cfg(test)]
@@ -166,47 +181,47 @@ mod tests {
 
     #[test]
     fn test_past_time() {
-        let result = interpret("half an hour ago", false, fixed_time());
+        let result = interpret("half an hour ago", false, fixed_time()).unwrap();
         assert_eq!(result.get_duration_sec() as i32, -30 * consts::MINUTE);
 
-        let result = interpret("2 hour ago", false, fixed_time());
+        let result = interpret("2 hour ago", false, fixed_time()).unwrap();
         assert_eq!(result.get_duration_sec() as i32, -2 * consts::HOUR);
 
-        let result = interpret("5 minuts ago", false, fixed_time());
+        let result = interpret("5 minuts ago", false, fixed_time()).unwrap();
         assert_eq!(result.get_duration_sec() as i32, -5 * consts::MINUTE);
 
-        let result = interpret("5 mnte ago I went to the zoo", false, fixed_time());
+        let result = interpret("5 mnte ago I went to the zoo", false, fixed_time()).unwrap();
         assert_eq!(result.get_duration_sec() as i32, -5 * consts::MINUTE);
 
         let result = interpret("-5 mnte ago I went to the zoo", false, fixed_time());
         assert_eq!(
-            result.context,
-            Err(InvalidTime {
+            result.unwrap_err(),
+            InvalidTime {
                 msg: "-5 mnte ago I went to the zoo".to_owned(),
                 what: "number".to_owned(),
                 value: -5,
-            })
+            }
         );
 
-        let result = interpret("we did something 10 days ago.", false, fixed_time());
+        let result = interpret("we did something 10 days ago.", false, fixed_time()).unwrap();
         assert_eq!(result.get_duration_sec() as i32, -10 * consts::DAY);
 
-        let result = interpret("we did something five days ago.", false, fixed_time());
+        let result = interpret("we did something five days ago.", false, fixed_time()).unwrap();
         assert_eq!(result.get_duration_sec() as i32, -5 * consts::DAY);
 
-        let result = interpret("5 seconds ago a car was moved", false, fixed_time());
+        let result = interpret("5 seconds ago a car was moved", false, fixed_time()).unwrap();
         assert_eq!(result.get_duration_sec() as i32, -5 * consts::SECOND);
 
-        let result = interpret("two weks ago", false, fixed_time());
+        let result = interpret("two weks ago", false, fixed_time()).unwrap();
         assert_eq!(result.get_duration_sec() as i32, -2 * consts::WEEK);
 
-        let result = interpret("a month ago", false, fixed_time());
+        let result = interpret("a month ago", false, fixed_time()).unwrap();
         assert_eq!(result.get_month(), 0);
 
-        let result = interpret("a few months ago", false, fixed_time());
+        let result = interpret("a few months ago", false, fixed_time()).unwrap();
         assert_eq!(result.get_month(), -2);
 
-        let result = interpret("half year ago", false, fixed_time());
+        let result = interpret("half year ago", false, fixed_time()).unwrap();
         assert_eq!(result.get_month(), -5);
     }
 }

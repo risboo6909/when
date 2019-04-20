@@ -49,6 +49,15 @@ pub struct Context {
     pub minute: i32,
 }
 
+impl Context {
+    pub fn set_duration<T>(&mut self, duration: T)
+    where
+        i64: From<T>,
+    {
+        self.duration = time::Duration::seconds(i64::from(duration));
+    }
+}
+
 impl Default for Context {
     fn default() -> Self {
         Context {
@@ -68,10 +77,11 @@ pub struct RuleResult<'a> {
     pub tokens: Option<Vec<PToken>>,
     pub bounds: Option<MatchBounds>,
 
-    pub context: Result<Context, DateTimeError>,
+    pub context: Context,
 }
 
-pub(crate) type FnRule = for<'r> fn(&'r str, bool, DateTime<Local>) -> RuleResult<'r>;
+pub(crate) type FnRule =
+    for<'r> fn(&'r str, bool, DateTime<Local>) -> Result<RuleResult<'r>, DateTimeError>;
 
 impl<'a> RuleResult<'a> {
     pub fn new() -> Self {
@@ -79,7 +89,7 @@ impl<'a> RuleResult<'a> {
             tail: "",
             tokens: None,
             bounds: None,
-            context: Ok(Default::default()),
+            context: Default::default(),
         }
     }
 
@@ -121,99 +131,51 @@ impl<'a> RuleResult<'a> {
         return None;
     }
 
-    pub fn set_tail(&mut self, tail: &'a str) -> &mut Self {
+    pub fn set_tail(&mut self, tail: &'a str) {
         self.tail = tail;
-        self
     }
 
-    pub fn set_bounds(&mut self, bounds: Option<MatchBounds>) -> &mut Self {
+    pub fn set_bounds(&mut self, bounds: Option<MatchBounds>) {
         self.bounds = bounds;
-        self
     }
 
-    pub fn set_error(&mut self, err: DateTimeError) {
-        self.context = Err(err);
-    }
-
-    pub fn set_duration<T>(&mut self, duration: T)
-    where
-        i64: From<T>,
-    {
-        if self.context.is_ok() {
-            self.context.as_mut().unwrap().duration = time::Duration::seconds(i64::from(duration));
-        }
+    pub fn set_context(&mut self, ctx: Context) {
+        self.context = ctx;
     }
 
     pub fn get_duration_sec(&self) -> i64 {
-        match &self.context {
-            Ok(ref ctx) => ctx.duration.num_seconds(),
-            Err(_) => 0,
-        }
-    }
-
-    pub fn set_minute(&mut self, minute: i32) {
-        if self.context.is_ok() {
-            self.context.as_mut().unwrap().minute = minute;
-        }
+        self.context.duration.num_seconds()
     }
 
     pub fn get_minutes(&self) -> i32 {
-        self.context.as_ref().unwrap().minute
-    }
-
-    pub fn set_hour(&mut self, hour: i32) {
-        if self.context.is_ok() {
-            self.context.as_mut().unwrap().hour = hour;
-        }
+        self.context.minute
     }
 
     pub fn get_hours(&self) -> i32 {
-        self.context.as_ref().unwrap().hour
-    }
-
-    pub fn set_day(&mut self, day: i32) {
-        if self.context.is_ok() {
-            self.context.as_mut().unwrap().day = day;
-        }
+        self.context.hour
     }
 
     pub fn get_day(&self) -> i32 {
-        self.context.as_ref().unwrap().day
-    }
-
-    pub fn set_month(&mut self, month: i32) {
-        if self.context.is_ok() {
-            self.context.as_mut().unwrap().month = month;
-        }
+        self.context.day
     }
 
     pub fn get_month(&self) -> i32 {
-        self.context.as_ref().unwrap().month
-    }
-
-    pub fn set_year(&mut self, year: i32) {
-        if self.context.is_ok() {
-            self.context.as_mut().unwrap().year = year;
-        }
+        self.context.month
     }
 
     pub fn get_year(&self) -> i32 {
-        self.context.as_ref().unwrap().year
+        self.context.year
     }
 }
 
 #[derive(Debug)]
 pub struct MatchResult {
     pub bounds: MatchBounds,
-    pub time_shift: Result<Context, DateTimeError>,
+    pub time_shift: Context,
 }
 
 impl MatchResult {
-    pub fn new(
-        time_shift: Result<Context, DateTimeError>,
-        start_idx: usize,
-        end_idx: usize,
-    ) -> Self {
+    pub fn new(time_shift: Context, start_idx: usize, end_idx: usize) -> Self {
         Self {
             bounds: MatchBounds::new(start_idx, end_idx),
             time_shift,

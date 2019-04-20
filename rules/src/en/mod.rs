@@ -7,11 +7,12 @@ mod weekdays;
 
 use super::common;
 use crate::apply_generic;
+use crate::errors::DateTimeError;
 use crate::rules::{FnRule, MatchResult};
 
 const RULES: [FnRule; 2] = [weekdays::interpret, time::interpret];
 
-pub fn parse(input: &str, exact_match: bool) -> Vec<MatchResult> {
+pub fn parse(input: &str, exact_match: bool) -> Vec<Result<MatchResult, DateTimeError>> {
     let input_lowered = input.to_lowercase();
     apply_generic(&input_lowered, &RULES, exact_match)
 }
