@@ -2,10 +2,8 @@ use super::super::Context;
 use super::common::{is_leap_year, DAYS_IN_MONTH};
 use crate::common_matchers::match_ordinal;
 use crate::errors::DateTimeError;
-use crate::tokens::{
-    Adverbs, Articles, Month, Ordinals, Prepositions, Priority, TimeInterval, Token, When,
-};
-use crate::{consts, rules::RuleResult, stub, Dist, TokenDesc};
+use crate::tokens::{Month, Ordinals, Prepositions, Priority, Token};
+use crate::{rules::RuleResult, stub, Dist, TokenDesc};
 use chrono::prelude::*;
 
 use nom::{alt, apply, call, many_till, named_args, take, tuple, types::CompleteStr};
@@ -326,12 +324,12 @@ fn make_time<Tz: TimeZone>(
         return Err(DateTimeError::invalid_time_error(input, "month", month));
     }
 
-    let mut days_in_month = DAYS_IN_MONTH[month as usize - 1];
-
     // 29 days in february for leap years
-    if month == 2 && is_leap_year(tz_aware.year()) {
-        days_in_month = 29;
-    }
+    let days_in_month = if month == 2 && is_leap_year(tz_aware.year()) {
+        29
+    } else {
+        DAYS_IN_MONTH[month as usize - 1]
+    };
 
     if day > days_in_month {
         return Err(DateTimeError::invalid_time_error(input, "day", day));

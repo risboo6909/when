@@ -1,12 +1,10 @@
-use chrono::prelude::{DateTime, Local};
+use chrono::prelude::DateTime;
 use nom::{types::CompleteStr, IResult};
 use std::convert::From;
 
 use crate::errors::DateTimeError;
-use crate::tokens::{PToken, Priority, TimeInterval, Token};
+use crate::tokens::{PToken, Priority, Token};
 use crate::Dist;
-use chrono::TimeZone;
-use failure::Fail;
 
 pub type MyResult<'a> = IResult<CompleteStr<'a>, TokenDesc>;
 
@@ -81,7 +79,7 @@ pub struct RuleResult<'a> {
     pub context: Context,
 }
 
-pub(crate) type FnRule<Tz: TimeZone> =
+pub(crate) type FnRule<Tz> =
     for<'r> fn(&'r str, bool, DateTime<Tz>) -> Result<RuleResult<'r>, DateTimeError>;
 
 impl<'a> RuleResult<'a> {
@@ -129,7 +127,7 @@ impl<'a> RuleResult<'a> {
         if !res.is_empty() {
             return Some(res[0].clone());
         }
-        return None;
+        None
     }
 
     pub fn set_tail(&mut self, tail: &'a str) {

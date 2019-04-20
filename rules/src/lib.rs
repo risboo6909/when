@@ -7,17 +7,15 @@ pub mod rules;
 
 use crate::errors as my_errors;
 use crate::rules::{Context, FnRule, MatchBounds, MatchResult, MyResult, RuleResult, TokenDesc};
-use crate::tokens::{PToken, Token};
 
-use chrono::prelude::Local;
 use core::borrow::BorrowMut;
 use nom::{
     self, alt, char, map, map_res, named, named_args, opt, pair, preceded, recognize, tag,
-    take_while, types::CompleteStr, ErrorKind, IResult,
+    take_while, types::CompleteStr, ErrorKind,
 };
 
 pub use crate::errors::DateTimeError;
-use chrono::{Date, DateTime, TimeZone};
+use chrono::{DateTime, TimeZone};
 use strsim::damerau_levenshtein;
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
@@ -87,7 +85,7 @@ macro_rules! define {
 
 macro_rules! define_char {
     ( $func_name: ident: $p: expr, $repr: expr ) => {
-        fn $func_name<'a>(input: CompleteStr<'a>) -> crate::MyResult<'a> {
+        fn $func_name(input: CompleteStr) -> crate::MyResult {
             if let Ok((tail, _)) = crate::recognize_symbol(input, $repr) {
                 return Ok((
                     tail,
@@ -336,9 +334,9 @@ pub(crate) fn apply_generic<Tz: TimeZone>(
             match rule(input, exact_match, tz.clone()) {
                 Ok(RuleResult {
                     tail,
-                    tokens,
                     bounds: Some(bounds),
                     context,
+                    ..
                 }) => {
                     // applied rule had a match
                     matched_tokens.push(Ok(MatchResult::new(
@@ -352,12 +350,7 @@ pub(crate) fn apply_generic<Tz: TimeZone>(
                     end_of_last_match_idx += bounds.end_idx;
                     break;
                 }
-                Ok(RuleResult {
-                    tail,
-                    tokens,
-                    bounds: None,
-                    context,
-                }) => continue,
+                Ok(RuleResult { bounds: None, .. }) => continue,
                 Err(err) => matched_tokens.push(Err(err)),
             }
         }

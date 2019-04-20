@@ -2,8 +2,8 @@ use chrono::prelude::*;
 
 use super::super::Context;
 use crate::errors::DateTimeError;
-use crate::tokens::{AmPm, Priority, Token, When};
-use crate::{consts, rules::RuleResult, stub, Dist, TokenDesc};
+use crate::tokens::{AmPm, Priority, Token};
+use crate::{rules::RuleResult, stub, Dist, TokenDesc};
 use nom::{alt, apply, call, many_till, named_args, take, tuple, types::CompleteStr};
 
 define_num!(hours: (Token::Number, Priority(0)));
@@ -82,15 +82,12 @@ fn make_time<Tz: TimeZone>(
     }
 
     let token = res.token_by_priority(Priority(3));
-    token.map_or((), |t| match t {
-        Token::AmPm(AmPm::Pm) => {
-            if hrs <= 12 {
-                // TODO: Ensure correctness
-                hrs = (hrs + 12) % 24;
-            }
+    if let Some(Token::AmPm(AmPm::Pm)) = token {
+        if hrs <= 12 {
+            // TODO: Ensure correctness
+            hrs = (hrs + 12) % 24;
         }
-        _ => (),
-    });
+    }
 
     ctx.hour = hrs;
 

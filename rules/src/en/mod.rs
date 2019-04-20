@@ -8,11 +8,9 @@ mod weekdays;
 use super::common;
 use crate::apply_generic;
 use crate::errors::DateTimeError;
-use crate::rules::{FnRule, MatchResult};
-use crate::tokens::TimeInterval::Day;
+use crate::rules::MatchResult;
 use chrono::offset::TimeZone;
 use chrono::offset::Utc;
-use chrono::{DateTime, NaiveDateTime};
 
 pub fn parse<Tz: TimeZone>(
     tz: Tz,

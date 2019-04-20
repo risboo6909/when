@@ -87,7 +87,6 @@ fn make_time<Tz: TimeZone>(
 ) -> Result<Context, DateTimeError> {
     let mut ctx = Context::default();
 
-    let mut offset = 0;
     let mut day = 0;
 
     let token = res.token_by_priority(Priority(0));

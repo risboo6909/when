@@ -2,7 +2,7 @@ use chrono::offset::TimeZone;
 use rules::rules::MatchResult;
 use rules::DateTimeError;
 
-type ParserType<Tz: TimeZone> = Fn(Tz, &str, bool) -> Vec<Result<MatchResult, DateTimeError>>;
+type ParserType<Tz> = Fn(Tz, &str, bool) -> Vec<Result<MatchResult, DateTimeError>>;
 
 pub struct Parser<Tz: TimeZone> {
     parser_func: Box<ParserType<Tz>>,

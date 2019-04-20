@@ -3,10 +3,10 @@ use chrono::prelude::*;
 use super::super::Context;
 use super::{is_leap_year, DAYS_IN_MONTH};
 use crate::errors::DateTimeError;
-use crate::tokens::{Adverbs, Articles, IntWord, Priority, TimeInterval, Token, When};
-use crate::{consts, rules::RuleResult, stub, Dist, TokenDesc};
+use crate::tokens::{Priority, Token};
+use crate::{rules::RuleResult, stub, TokenDesc};
 
-use nom::{alt, apply, call, many_till, named_args, take, tuple, types::CompleteStr};
+use nom::{alt, many_till, named_args, take, tuple, types::CompleteStr};
 
 define_num!(day: (Token::Number, Priority(0)));
 define_num!(month: (Token::Number, Priority(1)));
@@ -14,7 +14,7 @@ define_num!(year: (Token::Number, Priority(2)));
 
 define_char!(slash: Priority(10), '/');
 
-named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<CompleteStr<'a>>,
+named_args!(parse<'a>(_exact_match: bool)<CompleteStr<'a>, (Vec<CompleteStr<'a>>,
                              ( TokenDesc, TokenDesc, TokenDesc, TokenDesc, TokenDesc ) )>,
 
     many_till!(take!(1),
@@ -34,7 +34,6 @@ fn make_time<Tz: TimeZone>(
 ) -> Result<Context, DateTimeError> {
     let mut ctx = Context::default();
 
-    let mut year = 0;
     let mut month = 0;
     let mut day = 0;
 
@@ -50,11 +49,11 @@ fn make_time<Tz: TimeZone>(
     }
 
     let token = res.token_by_priority(Priority(2));
-    if let Some(Token::Number(n)) = token {
-        year = n;
+    let year = if let Some(Token::Number(n)) = token {
+        n
     } else {
-        year = tz_aware.year();
-    }
+        tz_aware.year()
+    };
 
     // only A.C. dates are supported yet
     if year <= 0 {
@@ -74,12 +73,12 @@ fn make_time<Tz: TimeZone>(
     }
 
     // DAYS_IN_MONTH slice counts from 0, however humans count months from 1
-    let mut days_in_month = DAYS_IN_MONTH[month as usize - 1];
-
     // 29 days in february for leap years
-    if month == 2 && is_leap_year(year) {
-        days_in_month = 29;
-    }
+    let days_in_month = if month == 2 && is_leap_year(year) {
+        29
+    } else {
+        DAYS_IN_MONTH[month as usize - 1]
+    };
 
     if day < 1 || day > days_in_month {
         return Err(DateTimeError::InvalidTime {
