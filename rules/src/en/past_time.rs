@@ -85,25 +85,26 @@ fn make_time<Tz: TimeZone>(
     let mut half = false;
 
     let token = res.token_by_priority(Priority(0));
-
-    if let Some(n) = match_num(token.clone()) {
-        num = n;
-    } else {
-        token.map_or((), |t| match t {
-            Token::Articles(_) => {
-                num = 1;
-            }
-            Token::Adverbs(Adverbs::Few) => {
-                num = 3;
-            }
-            Token::Adverbs(Adverbs::Half) => {
-                half = true;
-            }
-            Token::Number(n) => {
-                num = n as i32;
-            }
-            _ => unreachable!(),
-        });
+    if token.is_some() {
+        if let Some(n) = match_num(token.clone()) {
+            num = n;
+        } else {
+            match token.unwrap() {
+                Token::Articles(_) => {
+                    num = 1;
+                }
+                Token::Adverbs(Adverbs::Few) => {
+                    num = 3;
+                }
+                Token::Adverbs(Adverbs::Half) => {
+                    half = true;
+                }
+                Token::Number(n) => {
+                    num = n as i32;
+                }
+                _ => unreachable!(),
+            };
+        }
     }
 
     if num < 0 {
@@ -115,54 +116,56 @@ fn make_time<Tz: TimeZone>(
     }
 
     let token = res.token_by_priority(Priority(1));
-    token.map_or((), |t| match t {
-        Token::TimeInterval(TimeInterval::Second) => {
-            ctx.set_duration(-num);
-        }
-        Token::TimeInterval(TimeInterval::Minute) => {
-            ctx.set_duration(if half {
-                -30 * consts::SECOND
-            } else {
-                -num * consts::MINUTE
-            });
-        }
-        Token::TimeInterval(TimeInterval::Hour) => {
-            ctx.set_duration(if half {
-                -30 * consts::MINUTE
-            } else {
-                -num * consts::HOUR
-            });
-        }
-        Token::TimeInterval(TimeInterval::Day) => {
-            ctx.set_duration(if half {
-                -12 * consts::HOUR
-            } else {
-                -num * consts::DAY
-            });
-        }
-        Token::TimeInterval(TimeInterval::Week) => {
-            ctx.set_duration(if half {
-                -7 * 12 * consts::HOUR
-            } else {
-                -num * consts::WEEK
-            });
-        }
-        Token::TimeInterval(TimeInterval::Month) => {
-            if half {
-                ctx.set_duration(-14 * consts::DAY);
-            } else {
-                ctx.month = tz_aware.month() as i32 - num;
+    if token.is_some() {
+        match token.unwrap() {
+            Token::TimeInterval(TimeInterval::Second) => {
+                ctx.set_duration(-num);
             }
-        }
-        Token::TimeInterval(TimeInterval::Year) => {
-            if half {
-                ctx.month = tz_aware.month() as i32 - 6;
-            } else {
-                ctx.year = tz_aware.year() - num;
+            Token::TimeInterval(TimeInterval::Minute) => {
+                ctx.set_duration(if half {
+                    -30 * consts::SECOND
+                } else {
+                    -num * consts::MINUTE
+                });
             }
-        }
-        _ => unreachable!(),
-    });
+            Token::TimeInterval(TimeInterval::Hour) => {
+                ctx.set_duration(if half {
+                    -30 * consts::MINUTE
+                } else {
+                    -num * consts::HOUR
+                });
+            }
+            Token::TimeInterval(TimeInterval::Day) => {
+                ctx.set_duration(if half {
+                    -12 * consts::HOUR
+                } else {
+                    -num * consts::DAY
+                });
+            }
+            Token::TimeInterval(TimeInterval::Week) => {
+                ctx.set_duration(if half {
+                    -7 * 12 * consts::HOUR
+                } else {
+                    -num * consts::WEEK
+                });
+            }
+            Token::TimeInterval(TimeInterval::Month) => {
+                if half {
+                    ctx.set_duration(-14 * consts::DAY);
+                } else {
+                    ctx.month = tz_aware.month() as i32 - num;
+                }
+            }
+            Token::TimeInterval(TimeInterval::Year) => {
+                if half {
+                    ctx.month = tz_aware.month() as i32 - 6;
+                } else {
+                    ctx.year = tz_aware.year() - num;
+                }
+            }
+            _ => unreachable!(),
+        };
+    }
 
     Ok(ctx)
 }

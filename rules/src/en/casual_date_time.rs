@@ -61,13 +61,13 @@ fn make_time<Tz: TimeZone>(
         match token.unwrap() {
             Token::When(When::Last) => {
                 ctx.hour = 23;
-                ctx.set_duration(-24 * consts::HOUR as i64);
+                ctx.set_duration(-24 * i64::from(consts::HOUR));
             }
             Token::When(When::Tomorrow) => {
-                ctx.set_duration(24 * consts::HOUR as i64);
+                ctx.set_duration(24 * i64::from(consts::HOUR));
             }
             Token::When(When::Yesterday) => {
-                ctx.set_duration(-24 * consts::HOUR as i64);
+                ctx.set_duration(-24 * i64::from(consts::HOUR));
             }
             Token::When(When::Tonight) => {
                 ctx.hour = 23;
