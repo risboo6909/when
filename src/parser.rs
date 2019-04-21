@@ -1,6 +1,6 @@
 use chrono::offset::TimeZone;
 use chrono::offset::Utc;
-use chrono::{Datelike, Timelike};
+use chrono::{DateTime, Datelike, Timelike};
 use rules::rules::{Context, MatchResult};
 use rules::DateTimeError;
 use std::ops::Add;
@@ -29,10 +29,11 @@ impl<Tz: TimeZone> Parser<Tz> {
         }
     }
 
-    pub fn recognize(&self, input: &str) {
+    pub fn recognize(&self, input: &str) -> Vec<Result<DateTime<Tz>, DateTimeError>> {
         let res = (self.parser_func)(self.tz.clone(), input, self.exact_match);
         let merged = self.merge(res);
-        self.to_chrono(merged);
+
+        self.to_chrono(merged)
     }
 
     fn merge_group(&self, group: &Vec<&MatchResult>) -> Context {
@@ -84,9 +85,15 @@ impl<Tz: TimeZone> Parser<Tz> {
         merged
     }
 
-    fn to_chrono(&self, merged: Vec<Result<Context, DateTimeError>>) {
+    fn to_chrono(
+        &self,
+        merged: Vec<Result<Context, DateTimeError>>,
+    ) -> Vec<Result<DateTime<Tz>, DateTimeError>> {
+        let mut ready: Vec<Result<DateTime<Tz>, DateTimeError>> = Vec::new();
+
         for ctx in merged {
             if ctx.is_err() {
+                ready.push(Err(ctx.unwrap_err()));
                 continue;
             }
 
@@ -115,9 +122,8 @@ impl<Tz: TimeZone> Parser<Tz> {
             if ctx.minute.is_some() {
                 tz_aware = tz_aware.with_minute(ctx.minute.unwrap() as u32).unwrap();
             }
-
-            println!("++ {:?}", ctx);
-            println!("-- {:?}", tz_aware);
+            ready.push(Ok(tz_aware));
         }
+        ready
     }
 }
