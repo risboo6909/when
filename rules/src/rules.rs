@@ -57,22 +57,20 @@ impl Context {
     }
 
     pub fn update(&mut self, other: &Self) {
-        if self.duration == time::Duration::zero() {
-            self.duration = other.duration;
-        }
-        if self.year.is_none() {
+        self.duration = self.duration + other.duration;
+        if other.year.is_some() {
             self.year = other.year;
         }
-        if self.month.is_none() {
+        if other.month.is_some() {
             self.month = other.month;
         }
-        if self.day.is_none() {
+        if other.day.is_some() {
             self.day = other.day;
         }
-        if self.hour.is_none() {
+        if other.hour.is_some() {
             self.hour = other.hour;
         }
-        if self.minute.is_none() {
+        if other.minute.is_some() {
             self.minute = other.minute;
         }
     }

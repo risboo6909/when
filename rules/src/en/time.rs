@@ -79,6 +79,8 @@ fn make_time<Tz: TimeZone>(
                 value: hrs,
             });
         }
+    } else {
+        ctx.minute = Some(0);
     }
 
     let token = res.token_by_priority(Priority(3));

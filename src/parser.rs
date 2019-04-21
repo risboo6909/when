@@ -58,17 +58,14 @@ impl<Tz: TimeZone> Parser<Tz> {
                     let last = groups.last();
                     if last.is_some() {
                         if match_result.bounds.start_idx - last.unwrap().bounds.end_idx
-                            <= self.max_dist
+                            > self.max_dist
                         {
-                            groups.push(match_result);
-                        } else {
                             // distance is bigger than allowed threshold
                             merged.push(Ok(self.merge_group(&groups)));
                             groups.clear();
                         }
-                    } else {
-                        groups.push(match_result);
                     }
+                    groups.push(match_result);
                 }
                 Err(e) => {
                     merged.push(Err(e.clone()));
