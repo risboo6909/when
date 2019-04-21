@@ -88,9 +88,9 @@ fn make_time<Tz: TimeZone>(
         });
     }
 
-    ctx.year = year;
-    ctx.month = month;
-    ctx.day = day;
+    ctx.year = Some(year);
+    ctx.month = Some(month);
+    ctx.day = Some(day);
 
     Ok(ctx)
 }

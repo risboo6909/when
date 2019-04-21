@@ -3,7 +3,7 @@ use failure::Fail;
 
 pub(crate) const UNKNOWN: u32 = 1; // couldn't recognize token
 
-#[derive(Debug, Fail, PartialEq)]
+#[derive(Debug, Fail, PartialEq, Clone)]
 pub enum DateTimeError {
     #[fail(display = "can't parse time unambiguously in: {}", msg)]
     AmbiguousTime { msg: String },

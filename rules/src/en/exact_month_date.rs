@@ -297,7 +297,7 @@ fn make_time<Tz: TimeZone>(
         return Err(DateTimeError::invalid_time_error(input, "day", day));
     }
 
-    ctx.day = day;
+    ctx.day = Some(day);
 
     let mut month = 1;
 
@@ -335,7 +335,7 @@ fn make_time<Tz: TimeZone>(
         return Err(DateTimeError::invalid_time_error(input, "day", day));
     }
 
-    ctx.month = month;
+    ctx.month = Some(month);
 
     Ok(ctx)
 }

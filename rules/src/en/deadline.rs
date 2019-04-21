@@ -181,14 +181,14 @@ fn make_time<Tz: TimeZone>(
                 if half {
                     ctx.set_duration(14 * consts::DAY);
                 } else {
-                    ctx.month = tz_aware.month() as i32 + num;
+                    ctx.month = Some(tz_aware.month() as i32 + num);
                 }
             }
             Token::TimeInterval(TimeInterval::Year) => {
                 if half {
-                    ctx.month = tz_aware.month() as i32 + 6;
+                    ctx.month = Some(tz_aware.month() as i32 + 6);
                 } else {
-                    ctx.year = tz_aware.year() + num;
+                    ctx.year = Some(tz_aware.year() + num);
                 }
             }
             _ => (),

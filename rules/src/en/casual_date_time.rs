@@ -60,7 +60,7 @@ fn make_time<Tz: TimeZone>(
     if token.is_some() {
         match token.unwrap() {
             Token::When(When::Last) => {
-                ctx.hour = 23;
+                ctx.hour = Some(23);
                 ctx.set_duration(-24 * i64::from(consts::HOUR));
             }
             Token::When(When::Tomorrow) => {
@@ -70,8 +70,8 @@ fn make_time<Tz: TimeZone>(
                 ctx.set_duration(-24 * i64::from(consts::HOUR));
             }
             Token::When(When::Tonight) => {
-                ctx.hour = 23;
-                ctx.minute = 0;
+                ctx.hour = Some(23);
+                ctx.minute = Some(0);
             }
             _ => (),
         }
@@ -82,20 +82,20 @@ fn make_time<Tz: TimeZone>(
     if token.is_some() {
         match token.unwrap() {
             Token::TimeOfDay(TimeOfDay::Morning) => {
-                ctx.hour = 8;
-                ctx.minute = 0;
+                ctx.hour = Some(8);
+                ctx.minute = Some(0);
             }
             Token::TimeOfDay(TimeOfDay::Noon) => {
-                ctx.hour = 12;
-                ctx.minute = 0;
+                ctx.hour = Some(12);
+                ctx.minute = Some(0);
             }
             Token::TimeOfDay(TimeOfDay::Evening) => {
-                ctx.hour = 18;
-                ctx.minute = 0;
+                ctx.hour = Some(18);
+                ctx.minute = Some(0);
             }
             Token::TimeOfDay(TimeOfDay::Night) => {
-                ctx.hour = 23;
-                ctx.minute = 0;
+                ctx.hour = Some(23);
+                ctx.minute = Some(0);
             }
             _ => (),
         }

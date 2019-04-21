@@ -71,7 +71,7 @@ fn make_time<Tz: TimeZone>(
         }
 
         if hrs <= 23 {
-            ctx.minute = minutes;
+            ctx.minute = Some(minutes);
         } else {
             return Err(DateTimeError::InvalidTime {
                 msg: input.to_string(),
@@ -89,7 +89,7 @@ fn make_time<Tz: TimeZone>(
         }
     }
 
-    ctx.hour = hrs;
+    ctx.hour = Some(hrs);
 
     Ok(ctx)
 }

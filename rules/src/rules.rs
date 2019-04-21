@@ -41,11 +41,11 @@ pub struct Context {
     pub duration: time::Duration,
 
     // absolute values
-    pub year: i32,
-    pub month: i32,
-    pub day: i32,
-    pub hour: i32,
-    pub minute: i32,
+    pub year: Option<i32>,
+    pub month: Option<i32>,
+    pub day: Option<i32>,
+    pub hour: Option<i32>,
+    pub minute: Option<i32>,
 }
 
 impl Context {
@@ -55,17 +55,38 @@ impl Context {
     {
         self.duration = time::Duration::seconds(i64::from(duration));
     }
+
+    pub fn update(&mut self, other: &Self) {
+        if self.duration == time::Duration::zero() {
+            self.duration = other.duration;
+        }
+        if self.year.is_none() {
+            self.year = other.year;
+        }
+        if self.month.is_none() {
+            self.month = other.month;
+        }
+        if self.day.is_none() {
+            self.day = other.day;
+        }
+        if self.hour.is_none() {
+            self.hour = other.hour;
+        }
+        if self.minute.is_none() {
+            self.minute = other.minute;
+        }
+    }
 }
 
 impl Default for Context {
     fn default() -> Self {
         Context {
             duration: time::Duration::zero(),
-            year: 0,
-            month: 0,
-            day: 0,
-            hour: 0,
-            minute: 0,
+            year: None,
+            month: None,
+            day: None,
+            hour: None,
+            minute: None,
         }
     }
 }
@@ -147,23 +168,23 @@ impl<'a> RuleResult<'a> {
     }
 
     pub fn get_minutes(&self) -> i32 {
-        self.context.minute
+        self.context.minute.unwrap_or(0)
     }
 
     pub fn get_hours(&self) -> i32 {
-        self.context.hour
+        self.context.hour.unwrap_or(0)
     }
 
     pub fn get_day(&self) -> i32 {
-        self.context.day
+        self.context.day.unwrap_or(0)
     }
 
     pub fn get_month(&self) -> i32 {
-        self.context.month
+        self.context.month.unwrap_or(0)
     }
 
     pub fn get_year(&self) -> i32 {
-        self.context.year
+        self.context.year.unwrap_or(0)
     }
 }
 
