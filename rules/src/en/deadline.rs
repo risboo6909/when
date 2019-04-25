@@ -277,5 +277,21 @@ mod tests {
 
         let result = interpret("drop me a line in a half hour", false, fixed_time()).unwrap();
         assert_eq!(result.get_duration_sec(), 30 * consts::MINUTE as i64);
+
+        let result = interpret(
+            "if will finish this project in the hlf of mnth",
+            false,
+            fixed_time(),
+        )
+        .unwrap();
+        assert_eq!(result.get_duration_sec(), 2 * consts::WEEK as i64);
+
+        let result = interpret(
+            "if will finish this project in hlf of mnth",
+            false,
+            fixed_time(),
+        )
+        .unwrap();
+        assert_eq!(result.get_duration_sec(), 2 * consts::WEEK as i64);
     }
 }
