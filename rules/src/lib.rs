@@ -11,7 +11,7 @@ use crate::rules::{Context, FnRule, MatchBounds, MatchResult, MyResult, RuleResu
 use core::borrow::BorrowMut;
 use nom::{
     self, alt, char, map, map_res, named, named_args, opt, pair, preceded, recognize, tag,
-    take_while, types::CompleteStr, ErrorKind,
+    take_while, tuple, types::CompleteStr, ErrorKind,
 };
 
 pub use crate::errors::DateTimeError;
@@ -151,7 +151,7 @@ macro_rules! make_interpreter {
             let mut res = RuleResult::new();
             match parse(CompleteStr(input), exact_match) {
                 Ok((tail, (skipped, tt))) => {
-                    res.set_bounds(Some(crate::match_bounds(skipped, input, tail)));
+                    res.set_bounds(Some(crate::match_bounds(skipped.iter().sum(), input, tail)));
                     for idx in 0..$n {
                         res.set_token(tt.get(idx).unwrap());
                     }
@@ -171,7 +171,6 @@ macro_rules! make_interpreter {
         }
     };
 }
-
 pub mod common;
 pub mod en;
 
@@ -190,6 +189,18 @@ named!(ltrim<CompleteStr, CompleteStr>,
 /// "  , abracadabra  " -> "abracadabra"
 named!(tokenize_word<CompleteStr, CompleteStr>,
     preceded!(ltrim, take_while!(|c: char| c == '.' || c.is_alphanumeric()))
+);
+
+/// Ignores whitespaces using "ltrim" and then consumes alphabetical characters in a string until
+/// any non alpha-numeric character appears or the string has been exhausted, returns total length
+/// of consumed symbols:
+///
+/// "  , abracadabra  " -> 17
+named!(tokenize_count_symbols<CompleteStr, usize>,
+    map!(tuple!(ltrim, take_while!(|c: char| c == '.' || c.is_alphanumeric())),
+    |(skipped, word)| {
+        skipped.len() + word.len()
+    })
 );
 
 /// Ignores whitespaces using "ltrim" and then consumes digits in a string until
@@ -320,17 +331,18 @@ fn best_fit<'a>(
 #[inline]
 pub(crate) fn apply_generic<Tz: TimeZone>(
     tz: DateTime<Tz>,
-    mut input: &str,
+    source_str: &str,
     rules: &[FnRule<Tz>],
     exact_match: bool,
 ) -> Vec<Result<MatchResult, DateTimeError>> {
     // empty vector of matched tokens
     let mut matched_tokens = Vec::new();
-    let mut end_of_last_match_idx = 0;
 
-    loop {
-        let mut had_match = false;
-        for rule in rules {
+    for rule in rules {
+        let mut input = source_str.clone();
+        let mut end_of_last_match_idx = 0;
+
+        loop {
             match rule(input, exact_match, tz.clone()) {
                 Ok(RuleResult {
                     tail,
@@ -344,21 +356,31 @@ pub(crate) fn apply_generic<Tz: TimeZone>(
                         end_of_last_match_idx + bounds.start_idx,
                         end_of_last_match_idx + bounds.end_idx,
                     )));
+
                     // continue with the rest of the string
-                    had_match = true;
                     input = tail;
                     end_of_last_match_idx += bounds.end_idx;
+                }
+                Ok(RuleResult { bounds: None, .. }) => {
+                    // being inside this branch means no more matches were found, we consider
+                    // current rule as fully applied and must continue with the next rule
                     break;
                 }
-                Ok(RuleResult { bounds: None, .. }) => continue,
-                Err(err) => matched_tokens.push(Err(err)),
+                Err(err) => {
+                    // TODO: Errors must include bounds
+                    // matched_tokens.push(Err(err));
+                    continue;
+                }
             }
         }
-
-        if !had_match {
-            break;
-        }
     }
+
+    // all rules where applied at this step and the results were saved into matched_tokens vector
+
+    // first of all we sort resulting vector by tokens start offsets
+    matched_tokens.sort_unstable_by_key(|k| k.as_ref().unwrap().bounds.start_idx);
+
+    // then look for bounds intersections, and treat them as errors
 
     matched_tokens
 }
@@ -379,16 +401,12 @@ pub(crate) fn apply_generic<Tz: TimeZone>(
 /// end_idx = input.len() - tail.len() - 1
 #[inline]
 pub(crate) fn match_bounds(
-    prefix: Vec<CompleteStr>,
+    prefix_len: usize,
     input: &str,
     tail: CompleteStr,
 ) -> crate::MatchBounds {
     crate::MatchBounds::new(
-        if prefix.is_empty() {
-            0
-        } else {
-            prefix.len() + 1
-        },
+        if prefix_len == 0 { 0 } else { prefix_len + 1 },
         input.len() - tail.len() - 1,
     )
 }

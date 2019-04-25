@@ -4,7 +4,7 @@ use super::super::Context;
 use super::{is_leap_year, DAYS_IN_MONTH};
 use crate::errors::DateTimeError;
 use crate::tokens::{Priority, Token};
-use crate::{rules::RuleResult, stub, TokenDesc};
+use crate::{rules::RuleResult, stub, tokenize_count_symbols, TokenDesc};
 
 use nom::{alt, many_till, named_args, take, tuple, types::CompleteStr};
 
@@ -14,10 +14,10 @@ define_num!(year: (Token::Number, Priority(2)));
 
 define_char!(slash: Priority(10), '/');
 
-named_args!(parse<'a>(_exact_match: bool)<CompleteStr<'a>, (Vec<CompleteStr<'a>>,
+named_args!(parse<'a>(_exact_match: bool)<CompleteStr<'a>, (Vec<usize>,
                              ( TokenDesc, TokenDesc, TokenDesc, TokenDesc, TokenDesc ) )>,
 
-    many_till!(take!(1),
+    many_till!(tokenize_count_symbols,
         alt!(
             tuple!(day, slash, month, slash, year) |
             tuple!(day, slash, month, stub, stub)

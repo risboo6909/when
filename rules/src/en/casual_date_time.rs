@@ -1,7 +1,7 @@
 use super::super::Context;
 use crate::errors::DateTimeError;
 use crate::tokens::{Priority, Pronouns, TimeOfDay, Token, When};
-use crate::{consts, rules::RuleResult, stub, Dist, TokenDesc};
+use crate::{consts, rules::RuleResult, stub, tokenize_count_symbols, Dist, TokenDesc};
 use chrono::prelude::*;
 
 use nom::{alt, apply, call, many_till, named_args, take, tuple, types::CompleteStr};
@@ -31,9 +31,9 @@ define!(noon: (Token::TimeOfDay(TimeOfDay::Noon), Priority(2)), "noon", Dist(1))
 
 combine!(time_of_day => night | morning | evening | noon);
 
-named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<CompleteStr<'a>>,
+named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<usize>,
                              ( TokenDesc, TokenDesc, ) )>,
-    many_till!(take!(1),
+    many_till!(tokenize_count_symbols,
         alt!(
             // last night, this morning, etc.
             tuple!(apply!(last_this, exact_match), apply!(time_of_day, exact_match)) |
@@ -55,8 +55,8 @@ fn make_time<Tz: TimeZone>(
     _input: &str,
 ) -> Result<Context, DateTimeError> {
     let mut ctx = Context::default();
-    let token = res.token_by_priority(Priority(1));
 
+    let token = res.token_by_priority(Priority(1));
     if token.is_some() {
         match token.unwrap() {
             Token::When(When::Last) => {

@@ -4,9 +4,11 @@ use super::super::Context;
 use crate::common_matchers::match_num;
 use crate::errors::DateTimeError;
 use crate::tokens::{Adverbs, Articles, IntWord, Priority, TimeInterval, Token, When};
-use crate::{consts, rules::RuleResult, stub, Dist, TokenDesc};
+use crate::{consts, rules::RuleResult, stub, tokenize_count_symbols, Dist, TokenDesc};
 
-use nom::{alt, apply, call, many_till, named_args, take, tuple, types::CompleteStr};
+use nom::{
+    alt, apply, call, is_alphanumeric, many_till, named_args, take_while, tuple, types::CompleteStr,
+};
 
 define!(
     adverb:
@@ -90,10 +92,10 @@ define!(
 
 combine!(time_interval => seconds | minutes | hours | days | weeks | months | years);
 
-named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<CompleteStr<'a>>,
+named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<usize>,
                              ( TokenDesc, TokenDesc, TokenDesc, TokenDesc ) )>,
 
-    many_till!(take!(1),
+    many_till!(tokenize_count_symbols,
         alt!(
             // e.g.: in a five months
             tuple!(apply!(when, exact_match), apply!(article, true),

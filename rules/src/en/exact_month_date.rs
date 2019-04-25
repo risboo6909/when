@@ -3,7 +3,7 @@ use super::common::{is_leap_year, DAYS_IN_MONTH};
 use crate::common_matchers::match_ordinal;
 use crate::errors::DateTimeError;
 use crate::tokens::{Month, Ordinals, Prepositions, Priority, Token};
-use crate::{rules::RuleResult, stub, Dist, TokenDesc};
+use crate::{rules::RuleResult, stub, tokenize_count_symbols, Dist, TokenDesc};
 use chrono::prelude::*;
 
 use nom::{alt, apply, call, many_till, named_args, take, tuple, types::CompleteStr};
@@ -154,7 +154,7 @@ define!(
     [(Token::Month(Month::April), Priority(5)), "april", Dist(2)] |
     [(Token::Month(Month::April), Priority(5)), "apr", Dist(0)]
 );
-define!(may: (Token::Month(Month::May), Priority(5)), "may", Dist(1));
+define!(may: (Token::Month(Month::May), Priority(5)), "may", Dist(0));
 define!(june:
     [(Token::Month(Month::June), Priority(5)), "june", Dist(2)] |
     [(Token::Month(Month::June), Priority(5)), "jun", Dist(0)]
@@ -187,10 +187,10 @@ define!(december:
 combine!(month => january | february | march | april | may | june | july | august | september |
                   october | november | december);
 
-named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<CompleteStr<'a>>,
+named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<usize>,
                              ( TokenDesc, TokenDesc, TokenDesc, TokenDesc ) )>,
 
-    many_till!(take!(1),
+    many_till!(tokenize_count_symbols,
         alt!(
             // 31th of february, 1st of january
             tuple!(apply!(numeric_ord, exact_match), apply!(of, exact_match), apply!(month, exact_match),

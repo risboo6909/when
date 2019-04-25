@@ -4,7 +4,7 @@ use time::Duration;
 use super::super::Context;
 use crate::errors::DateTimeError;
 use crate::tokens::{Priority, Token, Weekday as Day, When};
-use crate::{rules::RuleResult, stub, Dist, TokenDesc};
+use crate::{rules::RuleResult, stub, tokenize_count_symbols, Dist, TokenDesc};
 
 use nom::{alt, apply, call, many_till, named_args, take, tuple, types::CompleteStr};
 
@@ -65,9 +65,9 @@ combine!(when => this | last | past | next);
 
 define!(week_noun: (Token::Week, Priority(2)), "week", Dist(1));
 
-named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<CompleteStr<'a>>,
+named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<usize>,
                              ( TokenDesc, TokenDesc, TokenDesc ) )>,
-    many_till!(take!(1),
+    many_till!(tokenize_count_symbols,
         alt!(
             // day of week, when, "week", e.g. "tuesday next week"
             tuple!(apply!(day_of_week, exact_match), apply!(when, exact_match),

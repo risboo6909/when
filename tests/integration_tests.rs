@@ -8,7 +8,7 @@ fn test_parsers() {
     println!("integration1: {:?}", res);
 
     let mut parser =
-        when::parser::Parser::new(Box::new(when::en), chrono_tz::Europe::Moscow, 5, false);
-    let res = parser.recognize("My birthday is at 4th of march");
+        when::parser::Parser::new(Box::new(when::en), chrono_tz::Europe::Moscow, 8, false);
+    let res = parser.recognize("please call me tomorrow at 20p.m.");
     println!("integration2: {:?}", res);
 }

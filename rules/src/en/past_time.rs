@@ -4,7 +4,7 @@ use super::super::Context;
 use crate::common_matchers::match_num;
 use crate::errors::DateTimeError;
 use crate::tokens::{Adverbs, Articles, IntWord, Priority, TimeInterval, Token};
-use crate::{consts, rules::RuleResult, stub, Dist, TokenDesc};
+use crate::{consts, rules::RuleResult, stub, tokenize_count_symbols, Dist, TokenDesc};
 use nom::{alt, apply, call, many_till, named_args, take, tuple, types::CompleteStr};
 
 define!(one: (Token::IntWord(IntWord::One), Priority(0)), "one", Dist(0));
@@ -51,9 +51,9 @@ combine!(time_interval => seconds | minutes | hours | days | weeks | months | ye
 
 define!(ago: (Token::Ago, Priority(2)), "ago", Dist(0));
 
-named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<CompleteStr<'a>>,
+named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<usize>,
                              ( TokenDesc, TokenDesc, TokenDesc, TokenDesc ) )>,
-    many_till!(take!(1),
+    many_till!(tokenize_count_symbols,
         alt!(
             // half an hour ago
             tuple!(apply!(a_few_half, exact_match), apply!(article, true), apply!(time_interval, exact_match),
