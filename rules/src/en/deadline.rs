@@ -3,7 +3,9 @@ use chrono::prelude::*;
 use super::super::Context;
 use crate::common_matchers::match_num;
 use crate::errors::DateTimeError;
-use crate::tokens::{Adverbs, Articles, IntWord, Priority, TimeInterval, Token, When};
+use crate::tokens::{
+    Adverbs, Articles, IntWord, Prepositions, Priority, TimeInterval, Token, When,
+};
 use crate::{
     consts,
     rules::{MatchBounds, RuleResult},
@@ -32,6 +34,8 @@ define!(
     [(Token::Articles(Articles::An), Priority(2)), "an", Dist(0)] |
     [(Token::Articles(Articles::The), Priority(2)), "the", Dist(0)]
 );
+
+define!(prepos: (Token::Prepositions(Prepositions::Of), Priority(2)), "of", Dist(0));
 
 define!(one: (Token::IntWord(IntWord::One), Priority(3)), "one", Dist(0));
 define!(two: (Token::IntWord(IntWord::Two), Priority(3)), "two", Dist(0));
@@ -97,34 +101,40 @@ define!(
 combine!(time_interval => seconds | minutes | hours | days | weeks | months | years);
 
 named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<usize>,
-                             ( TokenDesc, TokenDesc, TokenDesc, TokenDesc ) )>,
+                             ( TokenDesc, TokenDesc, TokenDesc, TokenDesc, TokenDesc ) )>,
 
     many_till!(tokenize_count_symbols,
         alt!(
+            // e.g.: in the half of year
+            tuple!(apply!(when, exact_match), apply!(article, true), apply!(adverb, exact_match),
+                   apply!(prepos, true), apply!(time_interval, exact_match)) |
+            // e.g.: in half of year
+            tuple!(apply!(when, exact_match), apply!(adverb, exact_match), apply!(prepos, true),
+                   apply!(time_interval, exact_match), stub) |
             // e.g.: in a five months
             tuple!(apply!(when, exact_match), apply!(article, true),
-                   apply!(int_word, exact_match), apply!(time_interval, exact_match)) |
+                   apply!(int_word, exact_match), apply!(time_interval, exact_match), stub) |
             // e.g.: in a 5 months
             tuple!(apply!(when, exact_match), apply!(article, true), number,
-                   apply!(time_interval, exact_match)) |
+                   apply!(time_interval, exact_match), stub) |
             // e.g.: in five months
             tuple!(apply!(when, exact_match), apply!(int_word, exact_match),
-                   apply!(time_interval, exact_match), stub) |
+                   apply!(time_interval, exact_match), stub, stub) |
             // e.g.: in 5 months
-            tuple!(apply!(when, exact_match), number, apply!(time_interval, exact_match), stub) |
+            tuple!(apply!(when, exact_match), number, apply!(time_interval, exact_match), stub, stub) |
             // e.g.: in the few days
             tuple!(apply!(when, exact_match), apply!(article, true),
-                   apply!(adverb, exact_match), apply!(time_interval, exact_match)) |
+                   apply!(adverb, exact_match), apply!(time_interval, exact_match), stub) |
             // e.g.: in few days
             tuple!(apply!(when, exact_match), apply!(adverb, exact_match),
-                   apply!(time_interval, exact_match), stub) |
+                   apply!(time_interval, exact_match), stub, stub) |
             // e.g.: in a month, in a second, etc.
-            tuple!(apply!(when, exact_match), apply!(time_interval, exact_match), stub, stub)
+            tuple!(apply!(when, exact_match), apply!(time_interval, exact_match), stub, stub, stub)
         )
     )
 );
 
-make_interpreter!(positions = 4);
+make_interpreter!(positions = 5);
 
 fn make_time<Tz: TimeZone>(
     res: &RuleResult,
