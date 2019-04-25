@@ -4,7 +4,11 @@ use super::super::Context;
 use crate::common_matchers::match_num;
 use crate::errors::DateTimeError;
 use crate::tokens::{Adverbs, Articles, IntWord, Priority, TimeInterval, Token};
-use crate::{consts, rules::RuleResult, stub, tokenize_count_symbols, Dist, TokenDesc};
+use crate::{
+    consts,
+    rules::{MatchBounds, RuleResult},
+    stub, tokenize_count_symbols, Dist, TokenDesc,
+};
 use nom::{alt, apply, call, many_till, named_args, take, tuple, types::CompleteStr};
 
 define!(one: (Token::IntWord(IntWord::One), Priority(0)), "one", Dist(0));
@@ -79,6 +83,7 @@ fn make_time<Tz: TimeZone>(
     res: &RuleResult,
     tz_aware: DateTime<Tz>,
     input: &str,
+    bounds: MatchBounds,
 ) -> Result<Context, DateTimeError> {
     let mut ctx = Context::default();
     let mut num = 0;
@@ -108,11 +113,9 @@ fn make_time<Tz: TimeZone>(
     }
 
     if num < 0 {
-        return Err(DateTimeError::InvalidTime {
-            msg: input.to_string(),
-            what: "number".to_owned(),
-            value: num,
-        });
+        return Err(DateTimeError::invalid_time_error(
+            input, "number", num, bounds,
+        ));
     }
 
     let token = res.token_by_priority(Priority(1));
@@ -173,7 +176,7 @@ fn make_time<Tz: TimeZone>(
 #[cfg(test)]
 mod tests {
     use super::interpret;
-    use crate::errors::DateTimeError::InvalidTime;
+    use crate::errors::DateTimeError;
     use crate::{consts, MatchBounds};
     use chrono::prelude::*;
 
@@ -199,11 +202,7 @@ mod tests {
         let result = interpret("-5 mnte ago I went to the zoo", false, fixed_time());
         assert_eq!(
             result.unwrap_err(),
-            InvalidTime {
-                msg: "-5 mnte ago I went to the zoo".to_owned(),
-                what: "number".to_owned(),
-                value: -5,
-            }
+            DateTimeError::invalid_time_error("-5 mnte ago", "number", -5, MatchBounds::new(0, 11))
         );
 
         let result = interpret("we did something 10 days ago.", false, fixed_time()).unwrap();

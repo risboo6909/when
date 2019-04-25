@@ -4,7 +4,10 @@ use time::Duration;
 use super::super::Context;
 use crate::errors::DateTimeError;
 use crate::tokens::{Priority, Token, Weekday as Day, When};
-use crate::{rules::RuleResult, stub, tokenize_count_symbols, Dist, TokenDesc};
+use crate::{
+    rules::{MatchBounds, RuleResult},
+    stub, tokenize_count_symbols, Dist, TokenDesc,
+};
 
 use nom::{alt, apply, call, many_till, named_args, take, tuple, types::CompleteStr};
 
@@ -84,6 +87,7 @@ fn make_time<Tz: TimeZone>(
     res: &RuleResult,
     tz_aware: DateTime<Tz>,
     input: &str,
+    bounds: MatchBounds,
 ) -> Result<Context, DateTimeError> {
     let mut ctx = Context::default();
 
@@ -143,9 +147,7 @@ fn make_time<Tz: TimeZone>(
                 } else {
                     // what did user mean? previous week day or this week day or next
                     // week day? we don't know!
-                    return Err(DateTimeError::AmbiguousTime {
-                        msg: input.to_string(),
-                    });
+                    return Err(DateTimeError::ambiguous_time_error(input, bounds));
                 }
             }
             _ => (),
@@ -158,7 +160,7 @@ fn make_time<Tz: TimeZone>(
 #[cfg(test)]
 mod tests {
     use super::interpret;
-    use crate::errors::DateTimeError::AmbiguousTime;
+    use crate::errors::DateTimeError;
     use crate::MatchBounds;
     use chrono::prelude::*;
 
@@ -170,96 +172,42 @@ mod tests {
     #[test]
     fn test_past_last() {
         let result = interpret("do it for the past Monday", false, fixed_time()).unwrap();
-        assert_eq!(
-            result.bounds,
-            Some(MatchBounds {
-                start_idx: 14,
-                end_idx: 24
-            })
-        );
+        assert_eq!(result.bounds, Some(MatchBounds::new(14, 25)));
         assert_eq!(result.get_duration_sec(), -86400);
 
         let result = interpret("past saturday", false, fixed_time()).unwrap();
-        assert_eq!(
-            result.bounds,
-            Some(MatchBounds {
-                start_idx: 0,
-                end_idx: 12
-            })
-        );
+        assert_eq!(result.bounds, Some(MatchBounds::new(0, 13)));
         assert_eq!(result.get_duration_sec(), -259200);
 
         let result = interpret("pst frday", false, fixed_time()).unwrap();
-        assert_eq!(
-            result.bounds,
-            Some(MatchBounds {
-                start_idx: 0,
-                end_idx: 8
-            })
-        );
+        assert_eq!(result.bounds, Some(MatchBounds::new(0, 9)));
         assert_eq!(result.get_duration_sec(), -345600);
 
         let result = interpret("pat thrday", false, fixed_time()).unwrap();
-        assert_eq!(
-            result.bounds,
-            Some(MatchBounds {
-                start_idx: 0,
-                end_idx: 9
-            })
-        );
+        assert_eq!(result.bounds, Some(MatchBounds::new(0, 10)));
         assert_eq!(result.get_duration_sec(), -432000);
 
         let result = interpret("past wednesday", true, fixed_time()).unwrap();
-        assert_eq!(
-            result.bounds,
-            Some(MatchBounds {
-                start_idx: 0,
-                end_idx: 13
-            })
-        );
+        assert_eq!(result.bounds, Some(MatchBounds::new(0, 14)));
         assert_eq!(result.get_duration_sec(), -518400);
 
         let result = interpret("past tuesday", true, fixed_time()).unwrap();
-        assert_eq!(
-            result.bounds,
-            Some(MatchBounds {
-                start_idx: 0,
-                end_idx: 11
-            })
-        );
+        assert_eq!(result.bounds, Some(MatchBounds::new(0, 12)));
         assert_eq!(result.get_duration_sec(), -604800);
 
         let result = interpret("lst monday", false, fixed_time()).unwrap();
-        assert_eq!(
-            result.bounds,
-            Some(MatchBounds {
-                start_idx: 0,
-                end_idx: 9
-            })
-        );
+        assert_eq!(result.bounds, Some(MatchBounds::new(0, 10)));
         assert_eq!(result.get_duration_sec(), -86400);
     }
 
     #[test]
     fn test_next() {
         let result = interpret("next monday", false, fixed_time()).unwrap();
-        assert_eq!(
-            result.bounds,
-            Some(MatchBounds {
-                start_idx: 0,
-                end_idx: 10
-            })
-        );
+        assert_eq!(result.bounds, Some(MatchBounds::new(0, 11)));
         assert_eq!(result.get_duration_sec(), 518400);
 
         let result = interpret("drop me a line at next wednesday", false, fixed_time()).unwrap();
-        assert_eq!(
-            result.bounds,
-            Some(MatchBounds {
-                start_idx: 18,
-                end_idx: 31
-            })
-        );
+        assert_eq!(result.bounds, Some(MatchBounds::new(18, 32)));
         assert_eq!(result.get_duration_sec(), 86400);
     }
 
@@ -268,19 +216,11 @@ mod tests {
         let result = interpret("drop me a line at this monday", false, fixed_time());
         assert_eq!(
             result.unwrap_err(),
-            AmbiguousTime {
-                msg: "drop me a line at this monday".to_string()
-            }
+            DateTimeError::ambiguous_time_error("this monday", MatchBounds::new(18, 29))
         );
 
         let result = interpret("this friday", false, fixed_time()).unwrap();
-        assert_eq!(
-            result.bounds,
-            Some(MatchBounds {
-                start_idx: 0,
-                end_idx: 10
-            })
-        );
+        assert_eq!(result.bounds, Some(MatchBounds::new(0, 11)));
         assert_eq!(result.get_duration_sec(), 259200);
     }
 }

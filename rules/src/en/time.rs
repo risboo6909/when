@@ -3,7 +3,10 @@ use chrono::prelude::*;
 use super::super::Context;
 use crate::errors::DateTimeError;
 use crate::tokens::{AmPm, Priority, Token};
-use crate::{rules::RuleResult, stub, tokenize_count_symbols, Dist, TokenDesc};
+use crate::{
+    rules::{MatchBounds, RuleResult},
+    stub, tokenize_count_symbols, Dist, TokenDesc,
+};
 use nom::{alt, apply, call, many_till, named_args, take, tuple, types::CompleteStr};
 
 define_num!(hours: (Token::Number, Priority(0)));
@@ -51,6 +54,7 @@ fn make_time<Tz: TimeZone>(
     res: &RuleResult,
     _tz_aware: DateTime<Tz>,
     input: &str,
+    bounds: MatchBounds,
 ) -> Result<Context, DateTimeError> {
     let mut ctx = Context::default();
     let mut hrs: i32 = 0;
@@ -63,21 +67,17 @@ fn make_time<Tz: TimeZone>(
     let token = res.token_by_priority(Priority(2));
     if let Some(Token::Number(minutes)) = token {
         if minutes > 59 {
-            return Err(DateTimeError::InvalidTime {
-                msg: input.to_string(),
-                what: "minutes".to_string(),
-                value: minutes,
-            });
+            return Err(DateTimeError::invalid_time_error(
+                input, "minutes", minutes, bounds,
+            ));
         }
 
         if hrs <= 23 {
             ctx.minute = Some(minutes);
         } else {
-            return Err(DateTimeError::InvalidTime {
-                msg: input.to_string(),
-                what: "hours".to_string(),
-                value: hrs,
-            });
+            return Err(DateTimeError::invalid_time_error(
+                input, "hours", hrs, bounds,
+            ));
         }
     } else {
         ctx.minute = Some(0);
@@ -99,7 +99,7 @@ fn make_time<Tz: TimeZone>(
 #[cfg(test)]
 mod tests {
     use super::interpret;
-    use crate::errors::DateTimeError::InvalidTime;
+    use crate::errors::DateTimeError;
     use crate::MatchBounds;
     use chrono::prelude::*;
 
@@ -110,133 +110,61 @@ mod tests {
     #[test]
     fn test_hours_pm() {
         let result = interpret("5pm", false, fixed_time()).unwrap();
-        assert_eq!(
-            result.bounds,
-            Some(MatchBounds {
-                start_idx: 0,
-                end_idx: 2,
-            })
-        );
+        assert_eq!(result.bounds, Some(MatchBounds::new(0, 3)));
         assert_eq!(result.get_hours(), 17);
 
         let result = interpret("at 5 pm", false, fixed_time()).unwrap();
-        assert_eq!(
-            result.bounds,
-            Some(MatchBounds {
-                start_idx: 3,
-                end_idx: 6,
-            })
-        );
+        assert_eq!(result.bounds, Some(MatchBounds::new(3, 7)));
         assert_eq!(result.get_hours(), 17);
 
         let result = interpret("at 12 p.", false, fixed_time()).unwrap();
-        assert_eq!(
-            result.bounds,
-            Some(MatchBounds {
-                start_idx: 3,
-                end_idx: 7,
-            })
-        );
+        assert_eq!(result.bounds, Some(MatchBounds::new(3, 8)));
 
         assert_eq!(result.get_hours(), 0);
         let result = interpret("at 11p.m.", false, fixed_time()).unwrap();
-        assert_eq!(
-            result.bounds,
-            Some(MatchBounds {
-                start_idx: 3,
-                end_idx: 8,
-            })
-        );
+        assert_eq!(result.bounds, Some(MatchBounds::new(3, 9)));
         assert_eq!(result.get_hours(), 23);
     }
 
     #[test]
     fn test_hours_am() {
         let result = interpret("5am", false, fixed_time()).unwrap();
-        assert_eq!(
-            result.bounds,
-            Some(MatchBounds {
-                start_idx: 0,
-                end_idx: 2,
-            })
-        );
+        assert_eq!(result.bounds, Some(MatchBounds::new(0, 3)));
         assert_eq!(result.get_hours(), 5);
 
         let result = interpret("at 5 a.m.", false, fixed_time()).unwrap();
-        assert_eq!(
-            result.bounds,
-            Some(MatchBounds {
-                start_idx: 3,
-                end_idx: 8,
-            })
-        );
+        assert_eq!(result.bounds, Some(MatchBounds::new(3, 9)));
         assert_eq!(result.get_hours(), 5);
 
         let result = interpret("at 12 a.", false, fixed_time()).unwrap();
-        assert_eq!(
-            result.bounds,
-            Some(MatchBounds {
-                start_idx: 3,
-                end_idx: 7,
-            })
-        );
+        assert_eq!(result.bounds, Some(MatchBounds::new(3, 8)));
         assert_eq!(result.get_hours(), 12);
     }
 
     #[test]
     fn test_with_minutes() {
         let result = interpret("5:30am", false, fixed_time()).unwrap();
-        assert_eq!(
-            result.bounds,
-            Some(MatchBounds {
-                start_idx: 0,
-                end_idx: 5,
-            })
-        );
+        assert_eq!(result.bounds, Some(MatchBounds::new(0, 6)));
         assert_eq!(result.get_hours(), 5);
         assert_eq!(result.get_minutes(), 30);
 
         let result = interpret("5:59 pm", false, fixed_time()).unwrap();
-        assert_eq!(
-            result.bounds,
-            Some(MatchBounds {
-                start_idx: 0,
-                end_idx: 6,
-            })
-        );
+        assert_eq!(result.bounds, Some(MatchBounds::new(0, 7)));
         assert_eq!(result.get_hours(), 17);
         assert_eq!(result.get_minutes(), 59);
 
         let result = interpret("17-59 pm", false, fixed_time()).unwrap();
-        assert_eq!(
-            result.bounds,
-            Some(MatchBounds {
-                start_idx: 0,
-                end_idx: 7,
-            })
-        );
+        assert_eq!(result.bounds, Some(MatchBounds::new(0, 8)));
         assert_eq!(result.get_hours(), 17);
         assert_eq!(result.get_minutes(), 59);
 
         let result = interpret("up to 11-10 pm", false, fixed_time()).unwrap();
-        assert_eq!(
-            result.bounds,
-            Some(MatchBounds {
-                start_idx: 6,
-                end_idx: 13,
-            })
-        );
+        assert_eq!(result.bounds, Some(MatchBounds::new(6, 14)));
         assert_eq!(result.get_hours(), 23);
         assert_eq!(result.get_minutes(), 10);
 
         let result = interpret("it is 10:30 o'clock", false, fixed_time()).unwrap();
-        assert_eq!(
-            result.bounds,
-            Some(MatchBounds {
-                start_idx: 6,
-                end_idx: 10,
-            })
-        );
+        assert_eq!(result.bounds, Some(MatchBounds::new(6, 11)));
         assert_eq!(result.get_hours(), 10);
         assert_eq!(result.get_minutes(), 30);
     }
@@ -246,21 +174,13 @@ mod tests {
         let result = interpret("24:10", false, fixed_time());
         assert_eq!(
             result.unwrap_err(),
-            InvalidTime {
-                msg: "24:10".to_string(),
-                what: "hours".to_string(),
-                value: 24,
-            }
+            DateTimeError::invalid_time_error("24:10", "hours", 24, MatchBounds::new(0, 5))
         );
 
         let result = interpret("12:60", false, fixed_time());
         assert_eq!(
             result.unwrap_err(),
-            InvalidTime {
-                msg: "12:60".to_string(),
-                what: "minutes".to_string(),
-                value: 60,
-            }
+            DateTimeError::invalid_time_error("12:60", "minutes", 60, MatchBounds::new(0, 5))
         );
     }
 

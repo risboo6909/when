@@ -151,12 +151,13 @@ macro_rules! make_interpreter {
             let mut res = RuleResult::new();
             match parse(CompleteStr(input), exact_match) {
                 Ok((tail, (skipped, tt))) => {
-                    res.set_bounds(Some(crate::match_bounds(skipped.iter().sum(), input, tail)));
+                    let bounds = crate::match_bounds(skipped.iter().sum(), input, tail);
+                    res.set_bounds(Some(bounds.clone()));
                     for idx in 0..$n {
                         res.set_token(tt.get(idx).unwrap());
                     }
                     res.set_tail(*tail);
-                    match make_time(&res, tz, input) {
+                    match make_time(&res, tz, &input[bounds.start_idx..bounds.end_idx], bounds) {
                         Ok(ctx) => res.set_context(ctx),
                         Err(e) => return Err(e),
                     };
@@ -368,7 +369,8 @@ pub(crate) fn apply_generic<Tz: TimeZone>(
                 }
                 Err(err) => {
                     // TODO: Errors must include bounds
-                    // matched_tokens.push(Err(err));
+                    //err.bounds = Some(MatchBounds::new());
+                    //matched_tokens.push(Err(err));
                     continue;
                 }
             }
@@ -398,7 +400,7 @@ pub(crate) fn apply_generic<Tz: TimeZone>(
 ///  |---------------input--------------|
 ///
 /// start_idx = prefix.len() + 1 or 0 if there is no prefix
-/// end_idx = input.len() - tail.len() - 1
+/// end_idx = input.len() - tail.len()
 #[inline]
 pub(crate) fn match_bounds(
     prefix_len: usize,
@@ -407,6 +409,6 @@ pub(crate) fn match_bounds(
 ) -> crate::MatchBounds {
     crate::MatchBounds::new(
         if prefix_len == 0 { 0 } else { prefix_len + 1 },
-        input.len() - tail.len() - 1,
+        input.len() - tail.len(),
     )
 }

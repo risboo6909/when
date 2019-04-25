@@ -4,7 +4,11 @@ use super::super::Context;
 use crate::common_matchers::match_num;
 use crate::errors::DateTimeError;
 use crate::tokens::{Adverbs, Articles, IntWord, Priority, TimeInterval, Token, When};
-use crate::{consts, rules::RuleResult, stub, tokenize_count_symbols, Dist, TokenDesc};
+use crate::{
+    consts,
+    rules::{MatchBounds, RuleResult},
+    stub, tokenize_count_symbols, Dist, TokenDesc,
+};
 
 use nom::{
     alt, apply, call, is_alphanumeric, many_till, named_args, take_while, tuple, types::CompleteStr,
@@ -126,6 +130,7 @@ fn make_time<Tz: TimeZone>(
     res: &RuleResult,
     tz_aware: DateTime<Tz>,
     input: &str,
+    bounds: MatchBounds,
 ) -> Result<Context, DateTimeError> {
     let mut ctx = Context::default();
 
@@ -145,11 +150,9 @@ fn make_time<Tz: TimeZone>(
     let num = match_num(res.token_by_priority(Priority(3))).unwrap_or(num);
 
     if num < 0 {
-        return Err(DateTimeError::InvalidTime {
-            msg: input.to_string(),
-            what: "number".to_owned(),
-            value: num,
-        });
+        return Err(DateTimeError::invalid_time_error(
+            input, "number", num, bounds,
+        ));
     }
 
     let token = res.token_by_priority(Priority(4));
@@ -203,7 +206,7 @@ fn make_time<Tz: TimeZone>(
 #[cfg(test)]
 mod tests {
     use super::interpret;
-    use crate::errors::DateTimeError::{AmbiguousTime, InvalidTime};
+    use crate::errors::DateTimeError;
     use crate::{consts, MatchBounds};
     use chrono::prelude::*;
 
@@ -235,11 +238,12 @@ mod tests {
         let result = interpret("in -3 minute", false, fixed_time());
         assert_eq!(
             result.unwrap_err(),
-            InvalidTime {
-                msg: "in -3 minute".to_owned(),
-                what: "number".to_owned(),
-                value: -3,
-            }
+            DateTimeError::invalid_time_error(
+                "in -3 minute",
+                "number",
+                -3,
+                MatchBounds::new(0, 12)
+            )
         );
 
         let result = interpret(

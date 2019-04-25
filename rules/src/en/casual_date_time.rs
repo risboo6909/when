@@ -1,7 +1,11 @@
 use super::super::Context;
 use crate::errors::DateTimeError;
 use crate::tokens::{Priority, Pronouns, TimeOfDay, Token, When};
-use crate::{consts, rules::RuleResult, stub, tokenize_count_symbols, Dist, TokenDesc};
+use crate::{
+    consts,
+    rules::{MatchBounds, RuleResult},
+    stub, tokenize_count_symbols, Dist, TokenDesc,
+};
 use chrono::prelude::*;
 
 use nom::{alt, apply, call, many_till, named_args, take, tuple, types::CompleteStr};
@@ -53,6 +57,7 @@ fn make_time<Tz: TimeZone>(
     res: &RuleResult,
     _tz_aware: DateTime<Tz>,
     _input: &str,
+    bounds: MatchBounds,
 ) -> Result<Context, DateTimeError> {
     let mut ctx = Context::default();
 
@@ -122,7 +127,7 @@ mod tests {
             result.bounds,
             Some(MatchBounds {
                 start_idx: 16,
-                end_idx: 18
+                end_idx: 19
             })
         );
         assert_eq!(result.get_duration_sec(), 0);
@@ -132,7 +137,7 @@ mod tests {
             result.bounds,
             Some(MatchBounds {
                 start_idx: 16,
-                end_idx: 20
+                end_idx: 21
             })
         );
         assert_eq!(result.get_duration_sec(), 0);
@@ -142,7 +147,7 @@ mod tests {
             result.bounds,
             Some(MatchBounds {
                 start_idx: 16,
-                end_idx: 22
+                end_idx: 23
             })
         );
         assert_eq!(result.get_hours(), 23);
@@ -153,7 +158,7 @@ mod tests {
             result.bounds,
             Some(MatchBounds {
                 start_idx: 16,
-                end_idx: 23
+                end_idx: 24
             })
         );
         assert_eq!(result.get_duration_sec(), 24 * consts::HOUR as i64);
@@ -163,7 +168,7 @@ mod tests {
             result.bounds,
             Some(MatchBounds {
                 start_idx: 17,
-                end_idx: 25
+                end_idx: 26
             })
         );
         assert_eq!(result.get_duration_sec(), -24 * consts::HOUR as i64);
@@ -173,7 +178,7 @@ mod tests {
             result.bounds,
             Some(MatchBounds {
                 start_idx: 15,
-                end_idx: 30
+                end_idx: 31
             })
         );
         assert_eq!(result.get_duration_sec(), 24 * consts::HOUR as i64);
@@ -184,7 +189,7 @@ mod tests {
             result.bounds,
             Some(MatchBounds {
                 start_idx: 16,
-                end_idx: 32
+                end_idx: 33
             })
         );
         assert_eq!(result.get_duration_sec(), -24 * consts::HOUR as i64);
@@ -195,7 +200,7 @@ mod tests {
             result.bounds,
             Some(MatchBounds {
                 start_idx: 0,
-                end_idx: 9
+                end_idx: 10
             })
         );
         assert_eq!(result.get_duration_sec(), -24 * consts::HOUR as i64);
