@@ -2,7 +2,7 @@ use chrono::prelude::*;
 
 use super::super::Context;
 use crate::common_matchers::match_num;
-use crate::errors::DateTimeError;
+use crate::errors::{invalid_time_error, SemanticError};
 use crate::tokens::{
     Adverbs, Articles, IntWord, Prepositions, Priority, TimeInterval, Token, When,
 };
@@ -136,12 +136,12 @@ named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<usize>,
 
 make_interpreter!(positions = 5);
 
-fn make_time<Tz: TimeZone>(
-    res: &RuleResult,
+fn make_time<'a, 'b, Tz: TimeZone>(
+    res: &'a RuleResult,
     tz_aware: DateTime<Tz>,
-    input: &str,
+    input: &'b str,
     bounds: MatchBounds,
-) -> Result<Context, DateTimeError> {
+) -> Result<Context, SemanticError<'b>> {
     let mut ctx = Context::default();
 
     let mut half = false;
@@ -160,9 +160,7 @@ fn make_time<Tz: TimeZone>(
     let num = match_num(res.token_by_priority(Priority(3))).unwrap_or(num);
 
     if num < 0 {
-        return Err(DateTimeError::invalid_time_error(
-            input, "number", num, bounds,
-        ));
+        return Err(invalid_time_error(input, "number", num, bounds));
     }
 
     let token = res.token_by_priority(Priority(4));
@@ -216,7 +214,7 @@ fn make_time<Tz: TimeZone>(
 #[cfg(test)]
 mod tests {
     use super::interpret;
-    use crate::errors::DateTimeError;
+    use crate::errors::invalid_time_error;
     use crate::{consts, MatchBounds};
     use chrono::prelude::*;
 
@@ -247,13 +245,9 @@ mod tests {
 
         let result = interpret("in -3 minute", false, fixed_time());
         assert_eq!(
-            result.unwrap_err(),
-            DateTimeError::invalid_time_error(
-                "in -3 minute",
-                "number",
-                -3,
-                MatchBounds::new(0, 12)
-            )
+            result.unwrap_err().extract_error(),
+            invalid_time_error("in -3 minute", "number", -3, MatchBounds::new(0, 12))
+                .extract_error()
         );
 
         let result = interpret(

@@ -2,7 +2,7 @@ use chrono::prelude::DateTime;
 use nom::{types::CompleteStr, IResult};
 use std::convert::From;
 
-use crate::errors::DateTimeError;
+use crate::errors::SemanticError;
 use crate::tokens::{PToken, Priority, Token};
 use crate::Dist;
 
@@ -99,7 +99,7 @@ pub struct RuleResult<'a> {
 }
 
 pub(crate) type FnRule<Tz> =
-    for<'r> fn(&'r str, bool, DateTime<Tz>) -> Result<RuleResult<'r>, DateTimeError>;
+    for<'r> fn(&'r str, bool, DateTime<Tz>) -> Result<RuleResult<'r>, SemanticError<'r>>;
 
 impl<'a> RuleResult<'a> {
     pub fn new() -> Self {

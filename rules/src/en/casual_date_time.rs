@@ -1,5 +1,5 @@
 use super::super::Context;
-use crate::errors::DateTimeError;
+use crate::errors::SemanticError;
 use crate::tokens::{Priority, Pronouns, TimeOfDay, Token, When};
 use crate::{
     consts,
@@ -53,12 +53,12 @@ named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<usize>,
 
 make_interpreter!(positions = 2);
 
-fn make_time<Tz: TimeZone>(
-    res: &RuleResult,
+fn make_time<'a, 'b, Tz: TimeZone>(
+    res: &'a RuleResult,
     _tz_aware: DateTime<Tz>,
-    _input: &str,
+    _input: &'b str,
     bounds: MatchBounds,
-) -> Result<Context, DateTimeError> {
+) -> Result<Context, SemanticError<'b>> {
     let mut ctx = Context::default();
 
     let token = res.token_by_priority(Priority(1));

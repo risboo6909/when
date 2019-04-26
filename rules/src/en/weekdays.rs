@@ -2,7 +2,7 @@ use chrono::prelude::*;
 use time::Duration;
 
 use super::super::Context;
-use crate::errors::DateTimeError;
+use crate::errors::{ambiguous_time_error, SemanticError};
 use crate::tokens::{Priority, Token, Weekday as Day, When};
 use crate::{
     rules::{MatchBounds, RuleResult},
@@ -83,12 +83,12 @@ named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<usize>,
 
 make_interpreter!(positions = 3);
 
-fn make_time<Tz: TimeZone>(
-    res: &RuleResult,
+fn make_time<'a, 'b, Tz: TimeZone>(
+    res: &'a RuleResult,
     tz_aware: DateTime<Tz>,
-    input: &str,
+    input: &'b str,
     bounds: MatchBounds,
-) -> Result<Context, DateTimeError> {
+) -> Result<Context, SemanticError<'b>> {
     let mut ctx = Context::default();
 
     let mut day = 0;
@@ -147,7 +147,7 @@ fn make_time<Tz: TimeZone>(
                 } else {
                     // what did user mean? previous week day or this week day or next
                     // week day? we don't know!
-                    return Err(DateTimeError::ambiguous_time_error(input, bounds));
+                    return Err(ambiguous_time_error(input, bounds));
                 }
             }
             _ => (),
@@ -160,7 +160,7 @@ fn make_time<Tz: TimeZone>(
 #[cfg(test)]
 mod tests {
     use super::interpret;
-    use crate::errors::DateTimeError;
+    use crate::errors::ambiguous_time_error;
     use crate::MatchBounds;
     use chrono::prelude::*;
 
@@ -215,8 +215,8 @@ mod tests {
     fn test_this() {
         let result = interpret("drop me a line at this monday", false, fixed_time());
         assert_eq!(
-            result.unwrap_err(),
-            DateTimeError::ambiguous_time_error("this monday", MatchBounds::new(18, 29))
+            result.unwrap_err().extract_error(),
+            ambiguous_time_error("this monday", MatchBounds::new(18, 29)).extract_error()
         );
 
         let result = interpret("this friday", false, fixed_time()).unwrap();

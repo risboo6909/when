@@ -5,18 +5,18 @@ use rules::rules::{Context, MatchResult};
 use rules::DateTimeError;
 use std::ops::Add;
 
-type ParserType<Tz> = Fn(Tz, &str, bool) -> Vec<Result<MatchResult, DateTimeError>>;
+type ParserType<'a, Tz> = Fn(Tz, &'a str, bool) -> Vec<Result<MatchResult, DateTimeError>>;
 
-pub struct Parser<Tz: TimeZone> {
-    parser_func: Box<ParserType<Tz>>,
+pub struct Parser<'a, Tz: TimeZone> {
+    parser_func: Box<ParserType<'a, Tz>>,
     exact_match: bool,
     tz: Tz,
     max_dist: usize,
 }
 
-impl<Tz: TimeZone> Parser<Tz> {
+impl<'a, Tz: TimeZone> Parser<'a, Tz> {
     pub fn new(
-        parser_func: Box<ParserType<Tz>>,
+        parser_func: Box<ParserType<'a, Tz>>,
         tz: Tz,
         max_dist: usize,
         exact_match: bool,
@@ -29,7 +29,7 @@ impl<Tz: TimeZone> Parser<Tz> {
         }
     }
 
-    pub fn recognize(&self, input: &str) -> Vec<Result<DateTime<Tz>, DateTimeError>> {
+    pub fn recognize(&self, input: &'a str) -> Vec<Result<DateTime<Tz>, DateTimeError>> {
         let res = (self.parser_func)(self.tz.clone(), input, self.exact_match);
         let merged = self.merge(res);
 

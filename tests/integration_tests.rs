@@ -11,4 +11,9 @@ fn test_parsers() {
         when::parser::Parser::new(Box::new(when::en), chrono_tz::Europe::Moscow, 8, false);
     let res = parser.recognize("please call me tomorrow at 20p.m.");
     println!("integration2: {:?}", res);
+
+    let mut parser =
+        when::parser::Parser::new(Box::new(when::en), chrono_tz::Europe::Moscow, 8, false);
+    let res = parser.recognize("if will finish this project in the hlf of yar");
+    println!("integration3: {:?}", res);
 }

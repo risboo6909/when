@@ -14,7 +14,7 @@ use nom::{
     take_while, tuple, types::CompleteStr, ErrorKind,
 };
 
-pub use crate::errors::DateTimeError;
+pub use crate::errors::{DateTimeError, SemanticError};
 use chrono::{DateTime, TimeZone};
 use strsim::damerau_levenshtein;
 
@@ -147,7 +147,7 @@ macro_rules! make_interpreter {
             input: &str,
             exact_match: bool,
             tz: DateTime<Tz>,
-        ) -> Result<RuleResult, DateTimeError> {
+        ) -> Result<RuleResult, crate::errors::SemanticError> {
             let mut res = RuleResult::new();
             match parse(CompleteStr(input), exact_match) {
                 Ok((tail, (skipped, tt))) => {
@@ -159,7 +159,10 @@ macro_rules! make_interpreter {
                     res.set_tail(*tail);
                     match make_time(&res, tz, &input[bounds.start_idx..bounds.end_idx], bounds) {
                         Ok(ctx) => res.set_context(ctx),
-                        Err(e) => return Err(e),
+                        Err(mut err) => {
+                            err.set_tail(tail);
+                            return Err(err);
+                        }
                     };
                 }
                 Err(nom::Err::Error(nom::Context::Code(ref input, nom::ErrorKind::ManyTill))) => {
@@ -172,6 +175,7 @@ macro_rules! make_interpreter {
         }
     };
 }
+
 pub mod common;
 pub mod en;
 
@@ -330,10 +334,10 @@ fn best_fit<'a>(
 ///
 /// output will be as follows: [[When(This), Weekday(Friday)], [When(Next), Weekday(Monday)]]
 #[inline]
-pub(crate) fn apply_generic<Tz: TimeZone>(
+pub(crate) fn apply_generic<'a, Tz: TimeZone + 'a>(
     tz: DateTime<Tz>,
-    source_str: &str,
-    rules: &[FnRule<Tz>],
+    source_str: &'a str,
+    rules: &'a [FnRule<Tz>],
     exact_match: bool,
 ) -> Vec<Result<MatchResult, DateTimeError>> {
     // empty vector of matched tokens
@@ -368,10 +372,7 @@ pub(crate) fn apply_generic<Tz: TimeZone>(
                     break;
                 }
                 Err(err) => {
-                    // TODO: Errors must include bounds
-                    //err.bounds = Some(MatchBounds::new());
-                    //matched_tokens.push(Err(err));
-                    continue;
+                    matched_tokens.push(Err(err.extract_error()));
                 }
             }
         }

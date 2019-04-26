@@ -7,14 +7,14 @@ mod weekdays;
 
 use super::common;
 use crate::apply_generic;
-use crate::errors::DateTimeError;
+use crate::errors::{DateTimeError, SemanticError};
 use crate::rules::MatchResult;
 use chrono::offset::TimeZone;
 use chrono::offset::Utc;
 
-pub fn parse<Tz: TimeZone>(
+pub fn parse<'a, Tz: TimeZone + 'a>(
     tz: Tz,
-    input: &str,
+    input: &'a str,
     exact_match: bool,
 ) -> Vec<Result<MatchResult, DateTimeError>> {
     let input_lowered = input.to_lowercase();

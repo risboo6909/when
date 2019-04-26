@@ -2,10 +2,11 @@ use chrono::prelude::*;
 
 use super::super::Context;
 use super::{is_leap_year, DAYS_IN_MONTH};
+use crate::errors::{invalid_time_error, SemanticError};
 use crate::tokens::{Priority, Token};
 use crate::{
     rules::{MatchBounds, RuleResult},
-    stub, tokenize_count_symbols, DateTimeError, TokenDesc,
+    stub, tokenize_count_symbols, TokenDesc,
 };
 
 use nom::{alt, many_till, named_args, take, tuple, types::CompleteStr};
@@ -29,12 +30,12 @@ named_args!(parse<'a>(_exact_match: bool)<CompleteStr<'a>, (Vec<usize>,
 
 make_interpreter!(positions = 5);
 
-fn make_time<Tz: TimeZone>(
-    res: &RuleResult,
+fn make_time<'a, 'b, Tz: TimeZone>(
+    res: &'a RuleResult,
     tz_aware: DateTime<Tz>,
-    input: &str,
+    input: &'b str,
     bounds: MatchBounds,
-) -> Result<Context, DateTimeError> {
+) -> Result<Context, SemanticError<'b>> {
     let mut ctx = Context::default();
 
     let mut month = 0;
@@ -60,15 +61,11 @@ fn make_time<Tz: TimeZone>(
 
     // only A.C. dates are supported yet
     if year <= 0 {
-        return Err(DateTimeError::invalid_time_error(
-            input, "year", year, bounds,
-        ));
+        return Err(invalid_time_error(input, "year", year, bounds));
     }
 
     if month < 1 || month > 12 {
-        return Err(DateTimeError::invalid_time_error(
-            input, "month", month, bounds,
-        ));
+        return Err(invalid_time_error(input, "month", month, bounds));
     }
 
     // DAYS_IN_MONTH slice counts from 0, however humans count months from 1
@@ -80,7 +77,7 @@ fn make_time<Tz: TimeZone>(
     };
 
     if day < 1 || day > days_in_month {
-        return Err(DateTimeError::invalid_time_error(input, "day", day, bounds));
+        return Err(invalid_time_error(input, "day", day, bounds));
     }
 
     ctx.year = Some(year);
@@ -93,7 +90,7 @@ fn make_time<Tz: TimeZone>(
 #[cfg(test)]
 mod tests {
     use super::interpret;
-    use crate::errors::DateTimeError;
+    use crate::errors::invalid_time_error;
     use crate::{consts, MatchBounds};
     use chrono::prelude::*;
 
@@ -117,19 +114,19 @@ mod tests {
         let result = interpret("30/2/2018", false, fixed_time());
         assert_eq!(
             result.unwrap_err(),
-            DateTimeError::invalid_time_error("30/2/2018", "day", 30, MatchBounds::new(0, 9))
+            invalid_time_error("30/2/2018", "day", 30, MatchBounds::new(0, 9))
         );
 
         let result = interpret("25/13/2018", false, fixed_time());
         assert_eq!(
             result.unwrap_err(),
-            DateTimeError::invalid_time_error("25/13/2018", "month", 13, MatchBounds::new(0, 10))
+            invalid_time_error("25/13/2018", "month", 13, MatchBounds::new(0, 10))
         );
 
         let result = interpret("25/10/-2", false, fixed_time());
         assert_eq!(
             result.unwrap_err(),
-            DateTimeError::invalid_time_error("25/10/-2", "year", -2, MatchBounds::new(0, 8))
+            invalid_time_error("25/10/-2", "year", -2, MatchBounds::new(0, 8))
         );
     }
 }

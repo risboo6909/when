@@ -1,7 +1,7 @@
 use super::super::Context;
-use super::common::{is_leap_year, DAYS_IN_MONTH};
+use crate::common::{is_leap_year, DAYS_IN_MONTH};
 use crate::common_matchers::match_ordinal;
-use crate::errors::DateTimeError;
+use crate::errors::{invalid_time_error, SemanticError};
 use crate::tokens::{Month, Ordinals, Prepositions, Priority, Token};
 use crate::{
     rules::{MatchBounds, RuleResult},
@@ -243,12 +243,12 @@ named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<usize>,
 
 make_interpreter!(positions = 4);
 
-fn make_time<Tz: TimeZone>(
-    res: &RuleResult,
+fn make_time<'a, 'b, Tz: TimeZone>(
+    res: &'a RuleResult,
     tz_aware: DateTime<Tz>,
-    input: &str,
+    input: &'b str,
     bounds: MatchBounds,
-) -> Result<Context, DateTimeError> {
+) -> Result<Context, SemanticError<'b>> {
     let mut ctx = Context::default();
 
     let mut tens = None;
@@ -282,7 +282,7 @@ fn make_time<Tz: TimeZone>(
     if let Some(ones) = match_ordinal(res.token_by_priority(Priority(3))) as Option<i32> {
         if tens.is_some() {
             if ones >= 10 {
-                return Err(DateTimeError::invalid_time_error(
+                return Err(invalid_time_error(
                     input,
                     "day",
                     ones + tens.unwrap(),
@@ -299,7 +299,7 @@ fn make_time<Tz: TimeZone>(
     // if day is omitted, assume it is 1st day of a month
     let day = day.unwrap_or(1);
     if day <= 0 {
-        return Err(DateTimeError::invalid_time_error(input, "day", day, bounds));
+        return Err(invalid_time_error(input, "day", day, bounds));
     }
 
     ctx.day = Some(day);
@@ -326,9 +326,7 @@ fn make_time<Tz: TimeZone>(
     };
 
     if month < 1 || month > 12 {
-        return Err(DateTimeError::invalid_time_error(
-            input, "month", month, bounds,
-        ));
+        return Err(invalid_time_error(input, "month", month, bounds));
     }
 
     // 29 days in february for leap years
@@ -339,7 +337,7 @@ fn make_time<Tz: TimeZone>(
     };
 
     if day > days_in_month {
-        return Err(DateTimeError::invalid_time_error(input, "day", day, bounds));
+        return Err(invalid_time_error(input, "day", day, bounds));
     }
 
     ctx.month = Some(month);
@@ -350,7 +348,7 @@ fn make_time<Tz: TimeZone>(
 #[cfg(test)]
 mod tests {
     use super::interpret;
-    use crate::errors::DateTimeError;
+    use crate::errors::invalid_time_error;
     use crate::tokens::{Priority, Pronouns, TimeOfDay, Token, When};
     use crate::{consts, MatchBounds};
     use chrono::prelude::*;
@@ -386,19 +384,20 @@ mod tests {
 
         let result = interpret("twenty fourteen of april", false, fixed_time());
         assert_eq!(
-            result.unwrap_err(),
-            DateTimeError::invalid_time_error(
+            result.unwrap_err().extract_error(),
+            invalid_time_error(
                 "twenty fourteen of april",
                 "day",
                 34,
                 MatchBounds::new(0, 24)
             )
+            .extract_error()
         );
 
         let result = interpret("-3 march", false, fixed_time());
         assert_eq!(
-            result.unwrap_err(),
-            DateTimeError::invalid_time_error("-3 march", "day", -3, MatchBounds::new(0, 8))
+            result.unwrap_err().extract_error(),
+            invalid_time_error("-3 march", "day", -3, MatchBounds::new(0, 8)).extract_error()
         );
 
         let result = interpret("thirteen of february", false, fixed_time()).unwrap();
@@ -407,8 +406,8 @@ mod tests {
 
         let result = interpret("31st february", false, fixed_time());
         assert_eq!(
-            result.unwrap_err(),
-            DateTimeError::invalid_time_error("31st february", "day", 31, MatchBounds::new(0, 13))
+            result.unwrap_err().extract_error(),
+            invalid_time_error("31st february", "day", 31, MatchBounds::new(0, 13)).extract_error()
         );
 
         let result = interpret("feb. 4", false, fixed_time()).unwrap();

@@ -1,7 +1,7 @@
 use chrono::prelude::*;
 
 use super::super::Context;
-use crate::errors::DateTimeError;
+use crate::errors::{invalid_time_error, SemanticError};
 use crate::tokens::{AmPm, Priority, Token};
 use crate::{
     rules::{MatchBounds, RuleResult},
@@ -50,12 +50,12 @@ named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<usize>,
 
 make_interpreter!(positions = 4);
 
-fn make_time<Tz: TimeZone>(
-    res: &RuleResult,
+fn make_time<'a, 'b, Tz: TimeZone>(
+    res: &'a RuleResult,
     _tz_aware: DateTime<Tz>,
-    input: &str,
+    input: &'b str,
     bounds: MatchBounds,
-) -> Result<Context, DateTimeError> {
+) -> Result<Context, SemanticError<'b>> {
     let mut ctx = Context::default();
     let mut hrs: i32 = 0;
 
@@ -67,17 +67,13 @@ fn make_time<Tz: TimeZone>(
     let token = res.token_by_priority(Priority(2));
     if let Some(Token::Number(minutes)) = token {
         if minutes > 59 {
-            return Err(DateTimeError::invalid_time_error(
-                input, "minutes", minutes, bounds,
-            ));
+            return Err(invalid_time_error(input, "minutes", minutes, bounds));
         }
 
         if hrs <= 23 {
             ctx.minute = Some(minutes);
         } else {
-            return Err(DateTimeError::invalid_time_error(
-                input, "hours", hrs, bounds,
-            ));
+            return Err(invalid_time_error(input, "hours", hrs, bounds));
         }
     } else {
         ctx.minute = Some(0);
@@ -99,7 +95,7 @@ fn make_time<Tz: TimeZone>(
 #[cfg(test)]
 mod tests {
     use super::interpret;
-    use crate::errors::DateTimeError;
+    use crate::errors::invalid_time_error;
     use crate::MatchBounds;
     use chrono::prelude::*;
 
@@ -174,13 +170,13 @@ mod tests {
         let result = interpret("24:10", false, fixed_time());
         assert_eq!(
             result.unwrap_err(),
-            DateTimeError::invalid_time_error("24:10", "hours", 24, MatchBounds::new(0, 5))
+            invalid_time_error("24:10", "hours", 24, MatchBounds::new(0, 5))
         );
 
         let result = interpret("12:60", false, fixed_time());
         assert_eq!(
-            result.unwrap_err(),
-            DateTimeError::invalid_time_error("12:60", "minutes", 60, MatchBounds::new(0, 5))
+            result.unwrap_err().extract_error(),
+            invalid_time_error("12:60", "minutes", 60, MatchBounds::new(0, 5)).extract_error()
         );
     }
 
