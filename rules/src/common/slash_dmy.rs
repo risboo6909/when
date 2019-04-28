@@ -34,7 +34,6 @@ fn make_time<'a, 'b, Tz: TimeZone>(
     res: &'a RuleResult,
     tz_aware: DateTime<Tz>,
     input: &'b str,
-    bounds: MatchBounds,
 ) -> Result<Context, SemanticError<'b>> {
     let mut ctx = Context::default();
 
@@ -61,11 +60,11 @@ fn make_time<'a, 'b, Tz: TimeZone>(
 
     // only A.C. dates are supported yet
     if year <= 0 {
-        return Err(invalid_time_error(input, "year", year, bounds));
+        return Err(invalid_time_error(input, "year", year));
     }
 
     if month < 1 || month > 12 {
-        return Err(invalid_time_error(input, "month", month, bounds));
+        return Err(invalid_time_error(input, "month", month));
     }
 
     // DAYS_IN_MONTH slice counts from 0, however humans count months from 1
@@ -77,7 +76,7 @@ fn make_time<'a, 'b, Tz: TimeZone>(
     };
 
     if day < 1 || day > days_in_month {
-        return Err(invalid_time_error(input, "day", day, bounds));
+        return Err(invalid_time_error(input, "day", day));
     }
 
     ctx.year = Some(year);
@@ -113,20 +112,20 @@ mod tests {
 
         let result = interpret("30/2/2018", false, fixed_time());
         assert_eq!(
-            result.unwrap_err(),
-            invalid_time_error("30/2/2018", "day", 30, MatchBounds::new(0, 9))
+            result.unwrap_err().extract_error(),
+            invalid_time_error("30/2/2018", "day", 30).extract_error()
         );
 
         let result = interpret("25/13/2018", false, fixed_time());
         assert_eq!(
-            result.unwrap_err(),
-            invalid_time_error("25/13/2018", "month", 13, MatchBounds::new(0, 10))
+            result.unwrap_err().extract_error(),
+            invalid_time_error("25/13/2018", "month", 13).extract_error()
         );
 
         let result = interpret("25/10/-2", false, fixed_time());
         assert_eq!(
-            result.unwrap_err(),
-            invalid_time_error("25/10/-2", "year", -2, MatchBounds::new(0, 8))
+            result.unwrap_err().extract_error(),
+            invalid_time_error("25/10/-2", "year", -2).extract_error()
         );
     }
 }

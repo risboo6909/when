@@ -36,7 +36,7 @@ impl<'a, Tz: TimeZone> Parser<'a, Tz> {
         self.to_chrono(merged)
     }
 
-    fn merge_group(&self, group: &Vec<&MatchResult>) -> Context {
+    fn merge_group(&self, group: &[&MatchResult]) -> Context {
         let mut result = Context::default();
         for item in group.iter() {
             result.update(&item.time_shift);

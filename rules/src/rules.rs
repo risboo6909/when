@@ -23,7 +23,7 @@ impl TokenDesc {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub struct MatchBounds {
     pub start_idx: usize,
     pub end_idx: usize,

@@ -57,7 +57,6 @@ fn make_time<'a, 'b, Tz: TimeZone>(
     res: &'a RuleResult,
     _tz_aware: DateTime<Tz>,
     _input: &'b str,
-    bounds: MatchBounds,
 ) -> Result<Context, SemanticError<'b>> {
     let mut ctx = Context::default();
 

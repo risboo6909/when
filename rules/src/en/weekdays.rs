@@ -87,7 +87,6 @@ fn make_time<'a, 'b, Tz: TimeZone>(
     res: &'a RuleResult,
     tz_aware: DateTime<Tz>,
     input: &'b str,
-    bounds: MatchBounds,
 ) -> Result<Context, SemanticError<'b>> {
     let mut ctx = Context::default();
 
@@ -147,7 +146,7 @@ fn make_time<'a, 'b, Tz: TimeZone>(
                 } else {
                     // what did user mean? previous week day or this week day or next
                     // week day? we don't know!
-                    return Err(ambiguous_time_error(input, bounds));
+                    return Err(ambiguous_time_error(input));
                 }
             }
             _ => (),
@@ -216,7 +215,7 @@ mod tests {
         let result = interpret("drop me a line at this monday", false, fixed_time());
         assert_eq!(
             result.unwrap_err().extract_error(),
-            ambiguous_time_error("this monday", MatchBounds::new(18, 29)).extract_error()
+            ambiguous_time_error("this monday").extract_error()
         );
 
         let result = interpret("this friday", false, fixed_time()).unwrap();

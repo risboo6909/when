@@ -5,7 +5,6 @@ mod tokens;
 
 pub mod rules;
 
-use crate::errors as my_errors;
 use crate::rules::{Context, FnRule, MatchBounds, MatchResult, MyResult, RuleResult, TokenDesc};
 
 use core::borrow::BorrowMut;
@@ -95,7 +94,7 @@ macro_rules! define_char {
                     ),
                 ));
             }
-            crate::wrap_error(input, crate::my_errors::UNKNOWN)
+            crate::wrap_error(input, crate::errors::UNKNOWN)
         }
     };
 }
@@ -118,7 +117,7 @@ macro_rules! define_num {
                     ),
                 ));
             }
-            crate::wrap_error(input, crate::my_errors::UNKNOWN)
+            crate::wrap_error(input, crate::errors::UNKNOWN)
         }
     };
 }
@@ -152,15 +151,16 @@ macro_rules! make_interpreter {
             match parse(CompleteStr(input), exact_match) {
                 Ok((tail, (skipped, tt))) => {
                     let bounds = crate::match_bounds(skipped.iter().sum(), input, tail);
-                    res.set_bounds(Some(bounds.clone()));
+                    res.set_bounds(Some(bounds));
                     for idx in 0..$n {
                         res.set_token(tt.get(idx).unwrap());
                     }
                     res.set_tail(*tail);
-                    match make_time(&res, tz, &input[bounds.start_idx..bounds.end_idx], bounds) {
+                    match make_time(&res, tz, &input[bounds.start_idx..bounds.end_idx]) {
                         Ok(ctx) => res.set_context(ctx),
                         Err(mut err) => {
                             err.set_tail(tail);
+                            err.set_bounds(bounds);
                             return Err(err);
                         }
                     };
@@ -288,7 +288,7 @@ fn recognize_word<'a>(
         }
     }
 
-    wrap_error(input, my_errors::UNKNOWN)
+    wrap_error(input, errors::UNKNOWN)
 }
 
 /// Finds a minimal distance between an input word by applying all combinators from funcs.
@@ -321,7 +321,7 @@ fn best_fit<'a>(
         return Ok((selected_tail, TokenDesc::new(selected_token, min_dist)));
     }
 
-    wrap_error(input, my_errors::UNKNOWN)
+    wrap_error(input, errors::UNKNOWN)
 }
 
 /// Generic rules applier, accepts a string to parse as its input and a slice of rules,
@@ -344,7 +344,7 @@ pub(crate) fn apply_generic<'a, Tz: TimeZone + 'a>(
     let mut matched_tokens = Vec::new();
 
     for rule in rules {
-        let mut input = source_str.clone();
+        let mut input = source_str;
         let mut end_of_last_match_idx = 0;
 
         loop {
@@ -372,6 +372,7 @@ pub(crate) fn apply_generic<'a, Tz: TimeZone + 'a>(
                     break;
                 }
                 Err(err) => {
+                    input = err.get_tail();
                     matched_tokens.push(Err(err.extract_error()));
                 }
             }

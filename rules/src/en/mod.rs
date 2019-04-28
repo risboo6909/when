@@ -32,19 +32,8 @@ pub fn parse<'a, Tz: TimeZone + 'a>(
             exact_month_date::interpret::<Tz>,
             deadline::interpret::<Tz>,
             casual_date_time::interpret::<Tz>,
+            common::slash_dmy::interpret::<Tz>,
         ],
         exact_match,
     )
-}
-
-#[test]
-fn test_apply_rules() {
-    println!(
-        "{:?}",
-        parse(
-            chrono_tz::Europe::Moscow,
-            " you are invited to interview this saturday or friday last week!",
-            false
-        )
-    );
 }

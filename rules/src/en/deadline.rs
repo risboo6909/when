@@ -140,7 +140,6 @@ fn make_time<'a, 'b, Tz: TimeZone>(
     res: &'a RuleResult,
     tz_aware: DateTime<Tz>,
     input: &'b str,
-    bounds: MatchBounds,
 ) -> Result<Context, SemanticError<'b>> {
     let mut ctx = Context::default();
 
@@ -160,7 +159,7 @@ fn make_time<'a, 'b, Tz: TimeZone>(
     let num = match_num(res.token_by_priority(Priority(3))).unwrap_or(num);
 
     if num < 0 {
-        return Err(invalid_time_error(input, "number", num, bounds));
+        return Err(invalid_time_error(input, "number", num));
     }
 
     let token = res.token_by_priority(Priority(4));
@@ -246,8 +245,7 @@ mod tests {
         let result = interpret("in -3 minute", false, fixed_time());
         assert_eq!(
             result.unwrap_err().extract_error(),
-            invalid_time_error("in -3 minute", "number", -3, MatchBounds::new(0, 12))
-                .extract_error()
+            invalid_time_error("in -3 minute", "number", -3).extract_error()
         );
 
         let result = interpret(

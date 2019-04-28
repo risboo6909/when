@@ -16,7 +16,7 @@ pub enum DateTimeError {
     },
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 pub struct SemanticError<'a> {
     // meta info for parser
     bounds: MatchBounds,
@@ -27,17 +27,26 @@ pub struct SemanticError<'a> {
 }
 
 impl<'a> SemanticError<'a> {
-    pub fn extract_error(self) -> DateTimeError {
-        self.error
+    pub fn extract_error(&self) -> DateTimeError {
+        self.error.clone()
     }
     pub fn set_tail(&mut self, tail: CompleteStr<'a>) {
         self.tail = *tail;
     }
+    pub fn get_tail(&self) -> &'a str {
+        self.tail
+    }
+    pub fn set_bounds(&mut self, bounds: MatchBounds) {
+        self.bounds = bounds;
+    }
+    pub fn get_bounds(&self) -> MatchBounds {
+        self.bounds
+    }
 }
 
-pub fn ambiguous_time_error(msg: &str, bounds: MatchBounds) -> SemanticError {
+pub fn ambiguous_time_error(msg: &str) -> SemanticError {
     SemanticError {
-        bounds,
+        bounds: MatchBounds::new(0, 0),
         tail: "",
         error: DateTimeError::AmbiguousTime {
             msg: msg.to_owned(),
@@ -45,14 +54,9 @@ pub fn ambiguous_time_error(msg: &str, bounds: MatchBounds) -> SemanticError {
     }
 }
 
-pub fn invalid_time_error<'a>(
-    msg: &'a str,
-    what: &'a str,
-    value: i32,
-    bounds: MatchBounds,
-) -> SemanticError<'a> {
+pub fn invalid_time_error<'a>(msg: &'a str, what: &'a str, value: i32) -> SemanticError<'a> {
     SemanticError {
-        bounds,
+        bounds: MatchBounds::new(0, 0),
         tail: "",
         error: DateTimeError::InvalidTime {
             msg: msg.to_owned(),

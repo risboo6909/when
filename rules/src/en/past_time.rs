@@ -83,7 +83,6 @@ fn make_time<'a, 'b, Tz: TimeZone>(
     res: &'a RuleResult,
     tz_aware: DateTime<Tz>,
     input: &'b str,
-    bounds: MatchBounds,
 ) -> Result<Context, SemanticError<'b>> {
     let mut ctx = Context::default();
     let mut num = 0;
@@ -113,7 +112,7 @@ fn make_time<'a, 'b, Tz: TimeZone>(
     }
 
     if num < 0 {
-        return Err(invalid_time_error(input, "number", num, bounds));
+        return Err(invalid_time_error(input, "number", num));
     }
 
     let token = res.token_by_priority(Priority(1));
@@ -200,8 +199,7 @@ mod tests {
         let result = interpret("-5 mnte ago I went to the zoo", false, fixed_time());
         assert_eq!(
             result.unwrap_err().extract_error(),
-            invalid_time_error("-5 mnte ago", "number", -5, MatchBounds::new(0, 11))
-                .extract_error()
+            invalid_time_error("-5 mnte ago", "number", -5).extract_error()
         );
 
         let result = interpret("we did something 10 days ago.", false, fixed_time()).unwrap();

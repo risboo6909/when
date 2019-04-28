@@ -54,7 +54,6 @@ fn make_time<'a, 'b, Tz: TimeZone>(
     res: &'a RuleResult,
     _tz_aware: DateTime<Tz>,
     input: &'b str,
-    bounds: MatchBounds,
 ) -> Result<Context, SemanticError<'b>> {
     let mut ctx = Context::default();
     let mut hrs: i32 = 0;
@@ -67,13 +66,13 @@ fn make_time<'a, 'b, Tz: TimeZone>(
     let token = res.token_by_priority(Priority(2));
     if let Some(Token::Number(minutes)) = token {
         if minutes > 59 {
-            return Err(invalid_time_error(input, "minutes", minutes, bounds));
+            return Err(invalid_time_error(input, "minutes", minutes));
         }
 
         if hrs <= 23 {
             ctx.minute = Some(minutes);
         } else {
-            return Err(invalid_time_error(input, "hours", hrs, bounds));
+            return Err(invalid_time_error(input, "hours", hrs));
         }
     } else {
         ctx.minute = Some(0);
@@ -169,14 +168,14 @@ mod tests {
     fn test_wrong_times() {
         let result = interpret("24:10", false, fixed_time());
         assert_eq!(
-            result.unwrap_err(),
-            invalid_time_error("24:10", "hours", 24, MatchBounds::new(0, 5))
+            result.unwrap_err().extract_error(),
+            invalid_time_error("24:10", "hours", 24).extract_error()
         );
 
         let result = interpret("12:60", false, fixed_time());
         assert_eq!(
             result.unwrap_err().extract_error(),
-            invalid_time_error("12:60", "minutes", 60, MatchBounds::new(0, 5)).extract_error()
+            invalid_time_error("12:60", "minutes", 60).extract_error()
         );
     }
 
