@@ -24,8 +24,8 @@ define!(
     [(Token::When(When::Tomorrow), Priority(1)), "tomorrow", Dist(2)] |
     [(Token::When(When::Tomorrow), Priority(1)), "tmr", Dist(0)]
 );
-
 define!(yesterday: (Token::When(When::Yesterday), Priority(1)), "yesterday", Dist(2));
+
 combine!(when => today | tonight | yesterday | tomorrow);
 
 define!(night: (Token::TimeOfDay(TimeOfDay::Night), Priority(2)), "night", Dist(1));

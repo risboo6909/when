@@ -11,17 +11,14 @@ use crate::errors::{DateTimeError, SemanticError};
 use crate::rules::MatchResult;
 use chrono::offset::TimeZone;
 use chrono::offset::Utc;
+use chrono::DateTime;
 
 pub fn parse<'a, Tz: TimeZone + 'a>(
-    tz: Tz,
+    tz_aware: DateTime<Tz>,
     input: &'a str,
     exact_match: bool,
 ) -> Vec<Result<MatchResult, DateTimeError>> {
     let input_lowered = input.to_lowercase();
-    let tz_aware = tz
-        .from_local_datetime(&Utc::now().naive_utc())
-        .single()
-        .unwrap();
     apply_generic(
         tz_aware,
         &input_lowered,

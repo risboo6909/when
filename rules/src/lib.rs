@@ -13,8 +13,9 @@ use nom::{
     take_while, tuple, types::CompleteStr, ErrorKind,
 };
 
-pub use crate::errors::{DateTimeError, SemanticError};
+pub use crate::errors::{intersection_error, DateTimeError, SemanticError};
 use chrono::{DateTime, TimeZone};
+use std::cmp::min;
 use strsim::damerau_levenshtein;
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
@@ -183,8 +184,7 @@ pub mod en;
 named!(ltrim<CompleteStr, CompleteStr>,
     take_while!(
         |c: char|
-          c.is_whitespace() ||
-          c == ','
+          !c.is_alphanumeric() && c != '/' && c != ':' && c != '-'
     )
 );
 
@@ -273,7 +273,7 @@ fn recognize_word<'a>(
     token: crate::tokens::PToken,
 ) -> MyResult<'a> {
     if let Ok((tail, mut word)) = tokenize_word(input) {
-        // TODO: add comment why we replace "." with "" (examples a.m., p.m.0
+        // TODO: add comment why we replace "." with "" (examples a.m., p.m.)
         let normalized_word = word.borrow_mut().replace(".", "");
         if max_dist == crate::Dist(0) {
             // when max_dist is 0 perform just plain string comparison
@@ -324,6 +324,62 @@ fn best_fit<'a>(
     wrap_error(input, errors::UNKNOWN)
 }
 
+pub(crate) fn remove_overlapped<'a>(
+    source_str: &'a str,
+    matched_tokens: &'a Vec<Result<MatchResult, SemanticError<'a>>>,
+) -> Vec<Result<MatchResult, SemanticError<'a>>> {
+    let mut result: Vec<Result<MatchResult, SemanticError>> = Vec::new();
+    let mut overlap: Option<MatchBounds> = None;
+
+    let mut min_idx = 0;
+    let mut max_idx = None;
+
+    let mut prev_elem = None;
+
+    let mut f = |item: &'a Result<MatchResult, SemanticError>, start_idx, end_idx| {
+        if max_idx.map_or(false, |x| x >= start_idx) {
+            // maintain maximum position in text for overlapped interval
+            overlap = match overlap {
+                None => Some(MatchBounds::new(min_idx, end_idx)),
+                Some(bounds) => Some(MatchBounds::new(bounds.start_idx, end_idx)),
+            };
+        } else if overlap.is_some() {
+            result.push(Err(intersection_error(
+                &source_str[overlap.unwrap().start_idx..overlap.unwrap().end_idx],
+            )));
+            overlap = None;
+        } else if prev_elem.is_some() {
+            result.push(prev_elem.take().unwrap());
+        }
+
+        if max_idx.map_or(true, |x| end_idx > x) {
+            min_idx = start_idx;
+            max_idx = Some(end_idx);
+
+            prev_elem = Some(item.clone());
+        }
+    };
+
+    let mut last_item = None;
+    for item in matched_tokens.iter() {
+        match item {
+            Ok(token) => f(&item, token.get_start_idx(), token.get_end_idx()),
+            Err(token) => f(&item, token.get_start_idx(), token.get_end_idx()),
+        }
+        last_item = Some(item);
+    }
+
+    if overlap.is_none() {
+        result.push(last_item.unwrap().clone());
+    } else {
+        result.push(Err(intersection_error(
+            &source_str[overlap.unwrap().start_idx..overlap.unwrap().end_idx],
+        )));
+    }
+
+    result
+}
+
 /// Generic rules applier, accepts a string to parse as its input and a slice of rules,
 /// then it tries to apply each rule from the list one by one, appending parsed tokens (if succeed)
 /// to the output vector.
@@ -335,20 +391,21 @@ fn best_fit<'a>(
 /// output will be as follows: [[When(This), Weekday(Friday)], [When(Next), Weekday(Monday)]]
 #[inline]
 pub(crate) fn apply_generic<'a, Tz: TimeZone + 'a>(
-    tz: DateTime<Tz>,
+    date_time: DateTime<Tz>,
     source_str: &'a str,
     rules: &'a [FnRule<Tz>],
     exact_match: bool,
 ) -> Vec<Result<MatchResult, DateTimeError>> {
-    // empty vector of matched tokens
+    // empty vector of matched tokens and errors
     let mut matched_tokens = Vec::new();
 
     for rule in rules {
         let mut input = source_str;
         let mut end_of_last_match_idx = 0;
 
+        // try to apply one rule as many times as possible
         loop {
-            match rule(input, exact_match, tz.clone()) {
+            match rule(input, exact_match, date_time.clone()) {
                 Ok(RuleResult {
                     tail,
                     bounds: Some(bounds),
@@ -367,26 +424,36 @@ pub(crate) fn apply_generic<'a, Tz: TimeZone + 'a>(
                     end_of_last_match_idx += bounds.end_idx;
                 }
                 Ok(RuleResult { bounds: None, .. }) => {
-                    // being inside this branch means no more matches were found, we consider
+                    // being inside this branch means that no more matches were found, we consider
                     // current rule as fully applied and must continue with the next rule
                     break;
                 }
                 Err(err) => {
                     input = err.get_tail();
-                    matched_tokens.push(Err(err.extract_error()));
+                    matched_tokens.push(Err(err));
                 }
             }
         }
     }
 
-    // all rules where applied at this step and the results were saved into matched_tokens vector
+    // all rules were applied at this step and the results were saved into matched_tokens vector
 
     // first of all we sort resulting vector by tokens start offsets
-    matched_tokens.sort_unstable_by_key(|k| k.as_ref().unwrap().bounds.start_idx);
+    matched_tokens.sort_by_key(|k| match k {
+        Ok(x) => x.get_start_idx(),
+        Err(x) => x.get_start_idx(),
+    });
 
-    // then look for bounds intersections, and treat them as errors
+    // then look for tokens bounds intersections, and treat them as errors
+    let tmp = remove_overlapped(source_str, &matched_tokens);
 
-    matched_tokens
+    // unbox errors
+    tmp.iter()
+        .map(|item| match item {
+            Err(x) => Err(x.extract_error()),
+            Ok(x) => Ok(*x),
+        })
+        .collect()
 }
 
 /// Returns start and end indices of a match, accepts following arguments:

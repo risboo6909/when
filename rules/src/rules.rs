@@ -35,7 +35,7 @@ impl MatchBounds {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub struct Context {
     // relative value
     pub duration: time::Duration,
@@ -90,7 +90,7 @@ impl Default for Context {
 }
 
 #[derive(Debug)]
-pub struct RuleResult<'a> {
+pub(crate) struct RuleResult<'a> {
     pub tail: &'a str,
     pub tokens: Option<Vec<PToken>>,
     pub bounds: Option<MatchBounds>,
@@ -186,10 +186,10 @@ impl<'a> RuleResult<'a> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct MatchResult {
-    pub bounds: MatchBounds,
-    pub time_shift: Context,
+    bounds: MatchBounds,
+    time_shift: Context,
 }
 
 impl MatchResult {
@@ -198,5 +198,21 @@ impl MatchResult {
             bounds: MatchBounds::new(start_idx, end_idx),
             time_shift,
         }
+    }
+
+    pub fn get_timeshift(&self) -> &Context {
+        &self.time_shift
+    }
+
+    pub fn set_bounds(&mut self, bounds: MatchBounds) {
+        self.bounds = bounds;
+    }
+
+    pub fn get_start_idx(&self) -> usize {
+        self.bounds.start_idx
+    }
+
+    pub fn get_end_idx(&self) -> usize {
+        self.bounds.end_idx
     }
 }

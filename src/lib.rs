@@ -4,5 +4,6 @@
 
 pub mod parser;
 
-pub use rules::en::parse as en;
 pub use parser::Parser;
+pub use rules::en::parse as en;
+pub use rules::DateTimeError;

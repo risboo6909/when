@@ -198,7 +198,12 @@ fn make_time<'a, 'b, Tz: TimeZone>(
             }
             Token::TimeInterval(TimeInterval::Year) => {
                 if half {
-                    ctx.month = Some(tz_aware.month() as i32 + 6);
+                    let mut new_month = tz_aware.month() as i32 + 6;
+                    if new_month > 12 {
+                        ctx.year = Some(tz_aware.year() + 1);
+                        new_month = new_month % 12;
+                    }
+                    ctx.month = Some(new_month);
                 } else {
                     ctx.year = Some(tz_aware.year() + num);
                 }

@@ -1,14 +1,15 @@
 use chrono::offset::TimeZone;
 use chrono::offset::Utc;
-use chrono::{DateTime, Datelike, Timelike};
+use chrono::{DateTime, Datelike, NaiveDateTime, Timelike};
 use rules::rules::{Context, MatchResult};
 use rules::DateTimeError;
 use std::ops::Add;
 
-type ParserType<'a, Tz> = Fn(Tz, &'a str, bool) -> Vec<Result<MatchResult, DateTimeError>>;
+type ParserType<'a, Tz> =
+    Fn(DateTime<Tz>, &'a str, bool) -> Vec<Result<MatchResult, DateTimeError>>;
 
 pub struct Parser<'a, Tz: TimeZone> {
-    parser_func: Box<ParserType<'a, Tz>>,
+    lang_parser: Box<ParserType<'a, Tz>>,
     exact_match: bool,
     tz: Tz,
     max_dist: usize,
@@ -22,24 +23,47 @@ impl<'a, Tz: TimeZone> Parser<'a, Tz> {
         exact_match: bool,
     ) -> Self {
         Parser {
-            parser_func,
+            lang_parser: parser_func,
             exact_match,
             tz,
             max_dist,
         }
     }
 
-    pub fn recognize(&self, input: &'a str) -> Vec<Result<DateTime<Tz>, DateTimeError>> {
-        let res = (self.parser_func)(self.tz.clone(), input, self.exact_match);
+    fn recognize_helper(
+        &self,
+        now: NaiveDateTime,
+        input: &'a str,
+    ) -> (DateTime<Tz>, Vec<Result<Context, DateTimeError>>) {
+        let mut tz_aware = self.tz.from_local_datetime(&now).single().unwrap();
+
+        let res = (self.lang_parser)(tz_aware.clone(), input, self.exact_match);
         let merged = self.merge(res);
 
-        self.to_chrono(merged)
+        (tz_aware, merged)
+    }
+
+    // convert date/time to chrono
+    pub fn recognize(&self, input: &'a str) -> Vec<Result<DateTime<Tz>, DateTimeError>> {
+        let now = Utc::now().naive_utc();
+        let (tz_aware, merged) = self.recognize_helper(now, input);
+        self.to_chrono(tz_aware, merged)
+    }
+
+    // convert date/time to chrono
+    pub fn recognize_fixed_time(
+        &self,
+        now: NaiveDateTime,
+        input: &'a str,
+    ) -> Vec<Result<DateTime<Tz>, DateTimeError>> {
+        let (tz_aware, merged) = self.recognize_helper(now, input);
+        self.to_chrono(tz_aware, merged)
     }
 
     fn merge_group(&self, group: &[&MatchResult]) -> Context {
         let mut result = Context::default();
         for item in group.iter() {
-            result.update(&item.time_shift);
+            result.update(item.get_timeshift());
         }
         result
     }
@@ -57,7 +81,7 @@ impl<'a, Tz: TimeZone> Parser<'a, Tz> {
                 Ok(match_result) => {
                     let last = groups.last();
                     if last.is_some() {
-                        if match_result.bounds.start_idx - last.unwrap().bounds.end_idx
+                        if match_result.get_start_idx() - last.unwrap().get_end_idx()
                             > self.max_dist
                         {
                             // distance is bigger than allowed threshold
@@ -84,6 +108,7 @@ impl<'a, Tz: TimeZone> Parser<'a, Tz> {
 
     fn to_chrono(
         &self,
+        mut date_time: DateTime<Tz>,
         merged: Vec<Result<Context, DateTimeError>>,
     ) -> Vec<Result<DateTime<Tz>, DateTimeError>> {
         let mut ready: Vec<Result<DateTime<Tz>, DateTimeError>> = Vec::new();
@@ -94,15 +119,11 @@ impl<'a, Tz: TimeZone> Parser<'a, Tz> {
                 continue;
             }
 
-            let mut tz_aware = self
-                .tz
-                .from_local_datetime(&Utc::now().naive_utc())
-                .single()
-                .unwrap();
-
             let ctx = ctx.unwrap();
 
-            tz_aware = tz_aware.add(ctx.duration);
+            let mut tz_aware = date_time.clone();
+
+            tz_aware = tz_aware + ctx.duration;
 
             if ctx.year.is_some() {
                 tz_aware = tz_aware.with_year(ctx.year.unwrap()).unwrap();
