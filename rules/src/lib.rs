@@ -193,7 +193,7 @@ named!(ltrim<CompleteStr, CompleteStr>,
 ///
 /// "  , abracadabra  " -> "abracadabra"
 named!(tokenize_word<CompleteStr, CompleteStr>,
-    preceded!(ltrim, take_while!(|c: char| c == '.' || c.is_alphanumeric()))
+    preceded!(ltrim, take_while!(|c: char| c == '.' || c == ':' || c.is_alphanumeric()))
 );
 
 /// Ignores whitespaces using "ltrim" and then consumes alphabetical characters in a string until
@@ -202,7 +202,7 @@ named!(tokenize_word<CompleteStr, CompleteStr>,
 ///
 /// "  , abracadabra  " -> 17
 named!(tokenize_count_symbols<CompleteStr, usize>,
-    map!(tuple!(ltrim, take_while!(|c: char| c == '.' || c.is_alphanumeric())),
+    map!(tuple!(ltrim, take_while!(|c: char| c == '.' || c == ':' || c.is_alphanumeric())),
     |(skipped, word)| {
         skipped.len() + word.len()
     })

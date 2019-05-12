@@ -53,14 +53,14 @@ fn test_merge_parse_results() {
 #[test]
 fn test_multiple_results() {
     let mut parser =
-        when::parser::Parser::new(Box::new(when::en), chrono_tz::Europe::Moscow, 3, false);
+        when::parser::Parser::new(Box::new(when::en), chrono_tz::Europe::Moscow, 2, false);
 
     let res = parser.recognize_fixed_time(
         fixed_time(),
         "Today 21:50 and tomorrow 22:00 also yesterday 5a.m.",
     );
 
-    //println!("{:?}", res);
+    println!("{:?}", res);
 
     //    assert_eq!(res.len(), 1);
     //
