@@ -160,11 +160,11 @@ macro_rules! make_interpreter {
                     match make_time(&res, tz, &input[bounds.start_idx..bounds.end_idx]) {
                         Ok(ctx) => res.set_context(ctx),
                         Err(mut err) => {
-                            err.set_tail(tail);
                             err.set_bounds(bounds);
+                            err.set_tail(tail);
                             return Err(err);
                         }
-                    };
+                    }
                 }
                 Err(nom::Err::Error(nom::Context::Code(ref input, nom::ErrorKind::ManyTill))) => {
                     res.set_tail(input);
@@ -180,42 +180,46 @@ macro_rules! make_interpreter {
 pub mod common;
 pub mod en;
 
+fn is_ignorable(c: char) -> bool {
+    !(c == '/' || c == ':' || c == '-' || c.is_alphanumeric())
+}
+
 /// Trim spaces, special symbols and commas until any non-whitespace character appears
-named!(ltrim<CompleteStr, CompleteStr>,
-    take_while!(
-        |c: char|
-          !c.is_alphanumeric() && c != '/' && c != ':' && c != '-'
-    )
+named!(trim<CompleteStr, CompleteStr>,
+    take_while!(is_ignorable)
 );
 
-/// Ignores whitespaces using "ltrim" and then consumes alphabetical characters in a string until
+fn is_word_symbol(c: char) -> bool {
+    c == '.' || c == ':' || c.is_alphanumeric()
+}
+
+/// Ignores whitespaces using "trim" and then consumes alphabetical characters in a string until
 /// any non alpha-numeric character appears or the string has been exhausted:
 ///
 /// "  , abracadabra  " -> "abracadabra"
 named!(tokenize_word<CompleteStr, CompleteStr>,
-    preceded!(ltrim, take_while!(|c: char| c == '.' || c == ':' || c.is_alphanumeric()))
+    preceded!(trim, take_while!(is_word_symbol))
 );
 
-/// Ignores whitespaces using "ltrim" and then consumes alphabetical characters in a string until
-/// any non alpha-numeric character appears or the string has been exhausted, returns total length
-/// of consumed symbols:
+/// Consumes all spaces before a word, the word itself and all spaces after the word and returns
+/// total number of consumed characters:
 ///
 /// "  , abracadabra  " -> 17
 named!(tokenize_count_symbols<CompleteStr, usize>,
-    map!(tuple!(ltrim, take_while!(|c: char| c == '.' || c == ':' || c.is_alphanumeric())),
-    |(skipped, word)| {
-        skipped.len() + word.len()
+    map!(tuple!(trim, take_while!(|c: char| c == '.' || c == ':' || c.is_alphanumeric()), trim),
+    |(prefix, word, suffix)| {
+        prefix.len() + word.len() + suffix.len()
     })
 );
 
-/// Ignores whitespaces using "ltrim" and then consumes digits in a string until
+/// Ignores whitespaces using "trim" and then consumes digits in a string until
 /// any non digit character appears or the string has been exhausted, and in case of success
 /// converts the number from the string representation into i32:
 ///
 /// "  , -321  " -> -321
 named!(recognize_int<CompleteStr, i32>,
     map!(
-        preceded!(ltrim, pair!(
+        preceded!(trim, pair!(
             opt!(alt!(tag!("+") | tag!("-"))),
             map_res!(recognize!(nom::digit), |s: CompleteStr| s.parse::<i32>()))
             ),
@@ -224,9 +228,8 @@ named!(recognize_int<CompleteStr, i32>,
      })
 );
 
-/// TODO: Add comment
 named_args!(recognize_symbol<'a>(c: char)<CompleteStr<'a>, char>,
-    preceded!(ltrim, char!(c))
+    preceded!(trim, char!(c))
 );
 
 /// Stub combinator should be used in situations when there are several alternatives
@@ -420,8 +423,8 @@ pub(crate) fn apply_generic<'a, Tz: TimeZone + 'a>(
                     )));
 
                     // continue with the rest of the string
-                    input = tail;
                     end_of_last_match_idx += bounds.end_idx;
+                    input = tail;
                 }
                 Ok(RuleResult { bounds: None, .. }) => {
                     // being inside this branch means that no more matches were found, we consider
@@ -468,7 +471,7 @@ pub(crate) fn apply_generic<'a, Tz: TimeZone + 'a>(
 ///  |----prefix----|          |--tail--|
 ///  |---------------input--------------|
 ///
-/// start_idx = prefix.len() + 1 or 0 if there is no prefix
+/// start_idx = prefix.len() or 0 if there is no prefix
 /// end_idx = input.len() - tail.len()
 #[inline]
 pub(crate) fn match_bounds(
@@ -476,8 +479,5 @@ pub(crate) fn match_bounds(
     input: &str,
     tail: CompleteStr,
 ) -> crate::MatchBounds {
-    crate::MatchBounds::new(
-        if prefix_len == 0 { 0 } else { prefix_len + 1 },
-        input.len() - tail.len(),
-    )
+    crate::MatchBounds::new(prefix_len, input.len() - tail.len())
 }

@@ -204,10 +204,6 @@ impl MatchResult {
         &self.time_shift
     }
 
-    pub fn set_bounds(&mut self, bounds: MatchBounds) {
-        self.bounds = bounds;
-    }
-
     pub fn get_start_idx(&self) -> usize {
         self.bounds.start_idx
     }

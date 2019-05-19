@@ -30,6 +30,10 @@ impl<'a, Tz: TimeZone> Parser<'a, Tz> {
         }
     }
 
+    pub fn get_tz(&self) -> &Tz {
+        &self.tz
+    }
+
     fn recognize_helper(
         &self,
         now: NaiveDateTime,
@@ -45,8 +49,7 @@ impl<'a, Tz: TimeZone> Parser<'a, Tz> {
 
     // convert date/time to chrono
     pub fn recognize(&self, input: &'a str) -> Vec<Result<DateTime<Tz>, DateTimeError>> {
-        let now = Utc::now().naive_utc();
-        let (tz_aware, merged) = self.recognize_helper(now, input);
+        let (tz_aware, merged) = self.recognize_helper(Utc::now().naive_utc(), input);
         self.to_chrono(tz_aware, merged)
     }
 
@@ -72,35 +75,36 @@ impl<'a, Tz: TimeZone> Parser<'a, Tz> {
         &self,
         parsed: Vec<Result<MatchResult, DateTimeError>>,
     ) -> Vec<Result<Context, DateTimeError>> {
-        let mut groups: Vec<&MatchResult> = Vec::new();
-        let mut merged: Vec<Result<Context, DateTimeError>> = Vec::new();
+        let mut group: Vec<&MatchResult> = Vec::new();
+        let mut merged = Vec::new();
 
-        // parse results are ordered from leftmost match to rightmost
+        // parse results are ordered from leftmost match to the rightmost
         for item in parsed.iter() {
             match item {
                 Ok(match_result) => {
-                    let last = groups.last();
+                    let last = group.last();
                     if last.is_some() {
                         if match_result.get_start_idx() - last.unwrap().get_end_idx()
                             > self.max_dist
                         {
-                            // distance is bigger than allowed threshold
-                            merged.push(Ok(self.merge_group(&groups)));
-                            groups.clear();
+                            // distance is bigger than allowed threshold, finish previous group
+                            merged.push(Ok(self.merge_group(&group)));
+                            group.clear();
                         }
                     }
-                    groups.push(match_result);
+                    // and start building a new one
+                    group.push(match_result);
                 }
                 Err(e) => {
                     merged.push(Err(e.clone()));
-                    groups.clear();
+                    group.clear();
                 }
             }
         }
 
         // merge everything that left
-        if !groups.is_empty() {
-            merged.push(Ok(self.merge_group(&groups)));
+        if !group.is_empty() {
+            merged.push(Ok(self.merge_group(&group)));
         }
 
         merged
