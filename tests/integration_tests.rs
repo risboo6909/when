@@ -1,5 +1,4 @@
-use chrono::offset::TimeZone;
-use chrono::{DateTime, NaiveDate, NaiveDateTime, NaiveTime};
+use chrono::{offset::TimeZone, NaiveDate, NaiveDateTime, NaiveTime};
 use std::str::FromStr;
 use when;
 use when::Parser;
@@ -32,8 +31,7 @@ fn assert_date_time<'a, Tz: TimeZone>(
 
 #[test]
 fn test_basic() {
-    let mut parser =
-        when::parser::Parser::new(Box::new(when::en), chrono_tz::Europe::Moscow, 8, false);
+    let parser = when::parser::Parser::new(Box::new(when::en), chrono_tz::Europe::Moscow, 8, false);
     assert_date_time(
         parser,
         "if I will finish this project in the hlf of yar",
@@ -44,8 +42,7 @@ fn test_basic() {
 
 #[test]
 fn test_merge_parse_results() {
-    let mut parser =
-        when::parser::Parser::new(Box::new(when::en), chrono_tz::Europe::Moscow, 5, false);
+    let parser = when::parser::Parser::new(Box::new(when::en), chrono_tz::Europe::Moscow, 5, false);
     assert_date_time(
         parser,
         "Call me next mnday at 6P.m.",
@@ -56,8 +53,7 @@ fn test_merge_parse_results() {
 
 #[test]
 fn test_multiple_results() {
-    let mut parser =
-        when::parser::Parser::new(Box::new(when::en), chrono_tz::Europe::Moscow, 3, false);
+    let parser = when::parser::Parser::new(Box::new(when::en), chrono_tz::Europe::Moscow, 3, false);
     assert_date_time(
         parser,
         "Today 21:50 and tomorrow 22:00 also yesterday   5a.m.",
@@ -72,8 +68,7 @@ fn test_multiple_results() {
 
 #[test]
 fn test_overlap_error() {
-    let mut parser =
-        when::parser::Parser::new(Box::new(when::en), chrono_tz::Europe::Moscow, 5, false);
+    let parser = when::parser::Parser::new(Box::new(when::en), chrono_tz::Europe::Moscow, 5, false);
 
     let res = parser.recognize_fixed_time(
         fixed_time(),
