@@ -3,7 +3,6 @@ use chrono::offset::Utc;
 use chrono::{DateTime, Datelike, NaiveDateTime, Timelike};
 use rules::rules::{Context, MatchResult};
 use rules::DateTimeError;
-use std::ops::Add;
 
 type ParserType<'a, Tz> =
     Fn(DateTime<Tz>, &'a str, bool) -> Vec<Result<MatchResult, DateTimeError>>;
@@ -39,7 +38,7 @@ impl<'a, Tz: TimeZone> Parser<'a, Tz> {
         now: NaiveDateTime,
         input: &'a str,
     ) -> (DateTime<Tz>, Vec<Result<Context, DateTimeError>>) {
-        let mut tz_aware = self.tz.from_local_datetime(&now).single().unwrap();
+        let tz_aware = self.tz.from_local_datetime(&now).single().unwrap();
 
         let res = (self.lang_parser)(tz_aware.clone(), input, self.exact_match);
         let merged = self.merge(res);
@@ -83,14 +82,13 @@ impl<'a, Tz: TimeZone> Parser<'a, Tz> {
             match item {
                 Ok(match_result) => {
                     let last = group.last();
-                    if last.is_some() {
-                        if match_result.get_start_idx() - last.unwrap().get_end_idx()
+                    if last.is_some()
+                        && match_result.get_start_idx() - last.unwrap().get_end_idx()
                             > self.max_dist
-                        {
-                            // distance is bigger than allowed threshold, finish previous group
-                            merged.push(Ok(self.merge_group(&group)));
-                            group.clear();
-                        }
+                    {
+                        // distance is bigger than allowed threshold, finish previous group
+                        merged.push(Ok(self.merge_group(&group)));
+                        group.clear();
                     }
                     // and start building a new one
                     group.push(match_result);
@@ -112,7 +110,7 @@ impl<'a, Tz: TimeZone> Parser<'a, Tz> {
 
     fn to_chrono(
         &self,
-        mut date_time: DateTime<Tz>,
+        date_time: DateTime<Tz>,
         merged: Vec<Result<Context, DateTimeError>>,
     ) -> Vec<Result<DateTime<Tz>, DateTimeError>> {
         let mut ready: Vec<Result<DateTime<Tz>, DateTimeError>> = Vec::new();
