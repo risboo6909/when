@@ -4,7 +4,16 @@ A natural language date/time parser with pluggable rules
 
 Inspired by https://github.com/olebedev/when
 
-#### Example usage:
+#### Examples
+
+* **tonight at 11:10 pm**
+* at **Friday afternoon**
+* the deadline is **next tuesday 14:00**
+* drop me a line **next wednesday at 2:25 p.m**
+* it could be done at **11 am past tuesday**
+
+
+#### Usage
 
 ```Rust
 use chrono_tz;
@@ -19,6 +28,14 @@ fn main() {
 ```
 
 Only english language is supported yet. More languages may be added in future.
+
+#### How it works?
+
+When uses Nom parsing library to parse input strings.
+
+There is a *rules* folder which contains rules for various languages. Parser tries to apply all available rules for the given language one by one until the first match. Situation when several rules match the same part of the string is considered as an erroneous.
+
+The library is also able to understand typos in words using Damerau-Levenshtein distance. Distances are defined inside the rules definitions. The longer word is the bigger distance is allowed. To disable fuzzy parsing, set the last argument to parser constructor to *true*, this will switch parser to *exact match only* mode.
 
 #### Final note
 
