@@ -161,26 +161,32 @@ impl<'a> RuleResult<'a> {
         self.context = ctx;
     }
 
+    #[cfg(test)]
     pub fn get_duration_sec(&self) -> i64 {
         self.context.duration.num_seconds()
     }
 
+    #[cfg(test)]
     pub fn get_minutes(&self) -> i32 {
         self.context.minute.unwrap_or(0)
     }
 
+    #[cfg(test)]
     pub fn get_hours(&self) -> i32 {
         self.context.hour.unwrap_or(0)
     }
 
+    #[cfg(test)]
     pub fn get_day(&self) -> i32 {
         self.context.day.unwrap_or(0)
     }
 
+    #[cfg(test)]
     pub fn get_month(&self) -> i32 {
         self.context.month.unwrap_or(0)
     }
 
+    #[cfg(test)]
     pub fn get_year(&self) -> i32 {
         self.context.year.unwrap_or(0)
     }
