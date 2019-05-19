@@ -7,10 +7,9 @@ mod weekdays;
 
 use super::common;
 use crate::apply_generic;
-use crate::errors::{DateTimeError, SemanticError};
+use crate::errors::DateTimeError;
 use crate::rules::MatchResult;
 use chrono::offset::TimeZone;
-use chrono::offset::Utc;
 use chrono::DateTime;
 
 pub fn parse<'a, Tz: TimeZone + 'a>(

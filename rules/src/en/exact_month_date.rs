@@ -3,13 +3,10 @@ use crate::common::{is_leap_year, DAYS_IN_MONTH};
 use crate::common_matchers::match_ordinal;
 use crate::errors::{invalid_time_error, SemanticError};
 use crate::tokens::{Month, Ordinals, Prepositions, Priority, Token};
-use crate::{
-    rules::{MatchBounds, RuleResult},
-    stub, tokenize_count_symbols, Dist, TokenDesc,
-};
+use crate::{rules::RuleResult, stub, tokenize_count_symbols, Dist, TokenDesc};
 use chrono::prelude::*;
 
-use nom::{alt, apply, call, many_till, named_args, take, tuple, types::CompleteStr};
+use nom::{alt, apply, call, many_till, named_args, tuple, types::CompleteStr};
 
 define_num!(day_num: (Token::Number, Priority(0)));
 

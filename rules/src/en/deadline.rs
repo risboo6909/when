@@ -6,15 +6,9 @@ use crate::errors::{invalid_time_error, SemanticError};
 use crate::tokens::{
     Adverbs, Articles, IntWord, Prepositions, Priority, TimeInterval, Token, When,
 };
-use crate::{
-    consts,
-    rules::{MatchBounds, RuleResult},
-    stub, tokenize_count_symbols, Dist, TokenDesc,
-};
+use crate::{consts, rules::RuleResult, stub, tokenize_count_symbols, Dist, TokenDesc};
 
-use nom::{
-    alt, apply, call, is_alphanumeric, many_till, named_args, take_while, tuple, types::CompleteStr,
-};
+use nom::{alt, apply, call, many_till, named_args, tuple, types::CompleteStr};
 
 define!(
     adverb:
@@ -201,7 +195,7 @@ fn make_time<'a, 'b, Tz: TimeZone>(
                     let mut new_month = tz_aware.month() as i32 + 6;
                     if new_month > 12 {
                         ctx.year = Some(tz_aware.year() + 1);
-                        new_month = new_month % 12;
+                        new_month %= 12;
                     }
                     ctx.month = Some(new_month);
                 } else {

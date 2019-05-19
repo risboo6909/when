@@ -3,11 +3,8 @@ use chrono::prelude::*;
 use super::super::Context;
 use crate::errors::{invalid_time_error, SemanticError};
 use crate::tokens::{AmPm, Priority, Token};
-use crate::{
-    rules::{MatchBounds, RuleResult},
-    stub, tokenize_count_symbols, Dist, TokenDesc,
-};
-use nom::{alt, apply, call, many_till, named_args, take, tuple, types::CompleteStr};
+use crate::{rules::RuleResult, stub, tokenize_count_symbols, Dist, TokenDesc};
+use nom::{alt, apply, call, many_till, named_args, tuple, types::CompleteStr};
 
 define_num!(hours: (Token::Number, Priority(0)));
 

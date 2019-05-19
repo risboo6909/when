@@ -4,12 +4,9 @@ use super::super::Context;
 use super::{is_leap_year, DAYS_IN_MONTH};
 use crate::errors::{invalid_time_error, SemanticError};
 use crate::tokens::{Priority, Token};
-use crate::{
-    rules::{MatchBounds, RuleResult},
-    stub, tokenize_count_symbols, TokenDesc,
-};
+use crate::{rules::RuleResult, stub, tokenize_count_symbols, TokenDesc};
 
-use nom::{alt, many_till, named_args, take, tuple, types::CompleteStr};
+use nom::{alt, many_till, named_args, tuple, types::CompleteStr};
 
 define_num!(day: (Token::Number, Priority(0)));
 define_num!(month: (Token::Number, Priority(1)));

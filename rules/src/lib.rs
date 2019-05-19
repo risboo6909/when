@@ -15,7 +15,6 @@ use nom::{
 
 pub use crate::errors::{intersection_error, DateTimeError, SemanticError};
 use chrono::{DateTime, TimeZone};
-use std::cmp::min;
 use strsim::damerau_levenshtein;
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
@@ -329,7 +328,7 @@ fn best_fit<'a>(
 
 pub(crate) fn remove_overlapped<'a>(
     source_str: &'a str,
-    matched_tokens: &'a Vec<Result<MatchResult, SemanticError<'a>>>,
+    matched_tokens: &'a [Result<MatchResult, SemanticError<'a>>],
 ) -> Vec<Result<MatchResult, SemanticError<'a>>> {
     let mut result: Vec<Result<MatchResult, SemanticError>> = Vec::new();
     let mut overlap: Option<MatchBounds> = None;

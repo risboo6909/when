@@ -4,12 +4,9 @@ use time::Duration;
 use super::super::Context;
 use crate::errors::{ambiguous_time_error, SemanticError};
 use crate::tokens::{Priority, Token, Weekday as Day, When};
-use crate::{
-    rules::{MatchBounds, RuleResult},
-    stub, tokenize_count_symbols, Dist, TokenDesc,
-};
+use crate::{rules::RuleResult, stub, tokenize_count_symbols, Dist, TokenDesc};
 
-use nom::{alt, apply, call, many_till, named_args, take, tuple, types::CompleteStr};
+use nom::{alt, apply, call, many_till, named_args, tuple, types::CompleteStr};
 
 // days of week have biggest priority
 

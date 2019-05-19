@@ -1,14 +1,10 @@
 use super::super::Context;
 use crate::errors::SemanticError;
 use crate::tokens::{Priority, Pronouns, TimeOfDay, Token, When};
-use crate::{
-    consts,
-    rules::{MatchBounds, RuleResult},
-    stub, tokenize_count_symbols, Dist, TokenDesc,
-};
+use crate::{consts, rules::RuleResult, stub, tokenize_count_symbols, Dist, TokenDesc};
 use chrono::prelude::*;
 
-use nom::{alt, apply, call, many_till, named_args, take, tuple, types::CompleteStr};
+use nom::{alt, apply, call, many_till, named_args, tuple, types::CompleteStr};
 
 define!(now: (Token::When(When::Now), Priority(0)), "now", Dist(0));
 

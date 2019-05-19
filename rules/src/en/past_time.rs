@@ -4,12 +4,8 @@ use super::super::Context;
 use crate::common_matchers::match_num;
 use crate::errors::{invalid_time_error, SemanticError};
 use crate::tokens::{Adverbs, Articles, IntWord, Priority, TimeInterval, Token};
-use crate::{
-    consts,
-    rules::{MatchBounds, RuleResult},
-    stub, tokenize_count_symbols, Dist, TokenDesc,
-};
-use nom::{alt, apply, call, many_till, named_args, take, tuple, types::CompleteStr};
+use crate::{consts, rules::RuleResult, stub, tokenize_count_symbols, Dist, TokenDesc};
+use nom::{alt, apply, call, many_till, named_args, tuple, types::CompleteStr};
 
 define!(one: (Token::IntWord(IntWord::One), Priority(0)), "one", Dist(0));
 define!(two: (Token::IntWord(IntWord::Two), Priority(0)), "two", Dist(0));
