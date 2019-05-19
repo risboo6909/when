@@ -160,6 +160,30 @@ impl<'a> RuleResult<'a> {
     pub fn set_context(&mut self, ctx: Context) {
         self.context = ctx;
     }
+
+    pub fn get_duration_sec(&self) -> i64 {
+        self.context.duration.num_seconds()
+    }
+
+    pub fn get_minutes(&self) -> i32 {
+        self.context.minute.unwrap_or(0)
+    }
+
+    pub fn get_hours(&self) -> i32 {
+        self.context.hour.unwrap_or(0)
+    }
+
+    pub fn get_day(&self) -> i32 {
+        self.context.day.unwrap_or(0)
+    }
+
+    pub fn get_month(&self) -> i32 {
+        self.context.month.unwrap_or(0)
+    }
+
+    pub fn get_year(&self) -> i32 {
+        self.context.year.unwrap_or(0)
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
