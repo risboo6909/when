@@ -35,7 +35,7 @@ fn test_basic() {
     assert_date_time(
         parser,
         "if I will finish this project in the hlf of yar",
-        &["2019-02-03T12:34:56"],
+        &["2019-02-03T12:34:00"],
         1,
     );
 }
@@ -46,7 +46,7 @@ fn test_merge_parse_results() {
     assert_date_time(
         parser,
         "Call me next mnday at 6P.m.",
-        &["2018-08-06T18:00:56"],
+        &["2018-08-06T18:00:00"],
         1,
     );
 }
@@ -58,9 +58,9 @@ fn test_multiple_results() {
         parser,
         "Today 21:50 and tomorrow 22:00 also yesterday   5a.m.",
         &[
-            "2018-08-03T21:50:56",
-            "2018-08-04T22:00:56",
-            "2018-08-02T05:00:56",
+            "2018-08-03T21:50:00",
+            "2018-08-04T22:00:00",
+            "2018-08-02T05:00:00",
         ],
         3,
     );
@@ -84,7 +84,7 @@ fn test_overlap_error() {
         })
     );
 
-    let naive = chrono::NaiveDateTime::from_str("2018-08-06T12:34:56").unwrap();
+    let naive = chrono::NaiveDateTime::from_str("2018-08-06T12:34:00").unwrap();
     assert_eq!(
         res[1],
         Ok(chrono_tz::Europe::Moscow

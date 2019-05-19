@@ -125,6 +125,8 @@ impl<'a, Tz: TimeZone> Parser<'a, Tz> {
 
             let mut tz_aware = date_time.clone();
 
+            tz_aware = tz_aware.with_second(0).unwrap();
+
             tz_aware = tz_aware + ctx.duration;
 
             if ctx.year.is_some() {
