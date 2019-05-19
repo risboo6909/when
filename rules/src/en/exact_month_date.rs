@@ -340,8 +340,6 @@ fn make_time<'a, 'b, Tz: TimeZone>(
 mod tests {
     use super::interpret;
     use crate::errors::invalid_time_error;
-    use crate::tokens::{Priority, Pronouns, TimeOfDay, Token, When};
-    use crate::{consts, MatchBounds};
     use chrono::prelude::*;
 
     fn fixed_time() -> DateTime<Local> {

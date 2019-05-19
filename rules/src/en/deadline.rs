@@ -212,8 +212,8 @@ fn make_time<'a, 'b, Tz: TimeZone>(
 #[cfg(test)]
 mod tests {
     use super::interpret;
+    use crate::consts;
     use crate::errors::invalid_time_error;
-    use crate::{consts, MatchBounds};
     use chrono::prelude::*;
 
     fn fixed_time() -> DateTime<Local> {

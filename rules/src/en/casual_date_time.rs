@@ -107,7 +107,6 @@ fn make_time<'a, 'b, Tz: TimeZone>(
 #[cfg(test)]
 mod tests {
     use super::interpret;
-    use crate::tokens::{Priority, Pronouns, TimeOfDay, Token, When};
     use crate::{consts, MatchBounds};
     use chrono::prelude::*;
 
