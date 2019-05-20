@@ -41,6 +41,8 @@ There is a *rules* folder which contains rules for various languages. Parser tri
 
 The library is also able to understand typos in words using Damerau-Levenshtein distance. Distances are defined inside the rules definitions. The longer word is the bigger distance is allowed. To disable fuzzy parsing, set the last argument to parser constructor to *true*, this will switch parser to *exact match only* mode.
 
-#### Final note
+Each rule has its own start and end match boundaries and a merge distance. If two matches are less than threshold away from each other then they are merged together.
+
+#### Final noteless than 
 
 This is my humble attempt to create a rust library. Although I tried to do my best, I know there are a lot of undiscovered bugs in there and my code is not at all perfect, so I will appreciate any help to make it more stable and better.
