@@ -12,6 +12,10 @@ Inspired by https://github.com/olebedev/when
 * drop me a line **next wednesday at 2:25 p.m**
 * it could be done at **11 am past tuesday**
 
+#### Key features
+
+* No regexp in rules definition. All rules are defined using rust macros.
+* Has two modes, one with typos recognition and another one which works with exact matches only.
 
 #### Usage
 
