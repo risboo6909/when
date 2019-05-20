@@ -1,7 +1,7 @@
 [package]
 name = "when"
 version = "0.1.0"
-authors = ["risboo6909 <risboo6909@yandex-team.ru>"]
+authors = ["Boris Tatarintsev <ttyv00@gmail.com>"]
 edition = "2018"
 
 [workspace]
