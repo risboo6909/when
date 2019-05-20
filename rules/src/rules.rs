@@ -1,5 +1,6 @@
 use chrono::prelude::DateTime;
 use nom::{types::CompleteStr, IResult};
+use serde::Serialize;
 use std::convert::From;
 
 use crate::errors::SemanticError;
@@ -23,7 +24,7 @@ impl TokenDesc {
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy, Serialize)]
 pub struct MatchBounds {
     pub start_idx: usize,
     pub end_idx: usize,

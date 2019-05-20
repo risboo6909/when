@@ -362,6 +362,7 @@ pub(crate) fn remove_overlapped<'a>(
         }
     };
 
+    // handle possible remaining items
     let mut last_item = None;
     for item in matched_tokens.iter() {
         match item {

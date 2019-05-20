@@ -15,3 +15,4 @@ time = "0.1"
 tuple = "0.4"
 failure = "0.1"
 num-traits = "0.2.6"
+serde = { version = "1.0.91", features = ["derive"] }

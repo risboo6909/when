@@ -1,10 +1,11 @@
 use crate::rules::MatchBounds;
 use failure::Fail;
 use nom::types::CompleteStr;
+use serde::Serialize;
 
 pub(crate) const UNKNOWN: u32 = 1; // couldn't recognize token
 
-#[derive(Debug, Fail, PartialEq, Clone)]
+#[derive(Debug, Fail, PartialEq, Clone, Serialize)]
 pub enum DateTimeError {
     #[fail(display = "can't parse time unambiguously in: {}", msg)]
     AmbiguousTime { msg: String },
@@ -18,7 +19,7 @@ pub enum DateTimeError {
     IntersectionError { text: String },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct SemanticError<'a> {
     // meta info for parser
     bounds: MatchBounds,
