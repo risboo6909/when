@@ -38,7 +38,7 @@ impl<'a, Tz: TimeZone> Parser<'a, Tz> {
         now: NaiveDateTime,
         input: &'a str,
     ) -> (DateTime<Tz>, Vec<Result<Context, DateTimeError>>) {
-        let tz_aware = self.tz.from_local_datetime(&now).single().unwrap();
+        let tz_aware = self.tz.from_utc_datetime(&now);
 
         let res = (self.lang_parser)(tz_aware.clone(), input, self.exact_match);
         let merged = self.merge(res);
@@ -124,8 +124,6 @@ impl<'a, Tz: TimeZone> Parser<'a, Tz> {
             let ctx = ctx.unwrap();
 
             let mut tz_aware = date_time.clone();
-
-            tz_aware = tz_aware.with_second(0).unwrap();
 
             tz_aware = tz_aware + ctx.duration;
 
