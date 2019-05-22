@@ -96,7 +96,7 @@ fn test_overlap_error() {
 #[test]
 fn test_various_requests() {
     let parser = when::parser::Parser::new(Box::new(when::en), chrono_tz::Europe::Moscow, 5, false);
-    assert_date_time(parser, "at Friday afternoon", &["2018-08-03T15:00:00"], 1);
+    assert_date_time(parser, "at Saturday afternoon", &["2018-08-04T15:00:00"], 1);
 
     let parser = when::parser::Parser::new(Box::new(when::en), chrono_tz::Europe::Moscow, 5, false);
     assert_date_time(

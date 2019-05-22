@@ -73,7 +73,9 @@ named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<usize>,
             tuple!(apply!(day_of_week, exact_match), apply!(when, exact_match),
                    apply!(week_noun, exact_match)) |
             // when and then any day of week, e.g. "last friday"
-            tuple!(apply!(when, exact_match), apply!(day_of_week, exact_match), stub)
+            tuple!(apply!(when, exact_match), apply!(day_of_week, exact_match), stub) |
+            // day of week
+            tuple!(apply!(day_of_week, exact_match), stub, stub)
         )
     )
 );
@@ -116,7 +118,11 @@ fn make_time<'a, 'b, Tz: TimeZone>(
         _ => (),
     });
 
-    let token = res.token_by_priority(Priority(1));
+    let mut token = res.token_by_priority(Priority(1));
+
+    if token.is_none() {
+        token = Some(Token::When(When::This));
+    }
 
     if token.is_some() {
         match token.unwrap() {
