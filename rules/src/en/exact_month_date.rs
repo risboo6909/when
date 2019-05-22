@@ -56,80 +56,80 @@ define!(thirtieth:
 combine!(tens => twentieth | thirtieth);
 
 define!(first:
-    [(Token::Ordinals(Ordinals::First), Priority(3)), "first", Dist(2)] |
+    [(Token::Ordinals(Ordinals::First), Priority(3)), "first", Dist(1)] |
     [(Token::Ordinals(Ordinals::First), Priority(3)), "one", Dist(0)]
 );
 define!(second:
-    [(Token::Ordinals(Ordinals::Second), Priority(3)), "second", Dist(2)] |
+    [(Token::Ordinals(Ordinals::Second), Priority(3)), "second", Dist(1)] |
     [(Token::Ordinals(Ordinals::Second), Priority(3)), "two", Dist(0)]
 );
 define!(third:
-    [(Token::Ordinals(Ordinals::Third), Priority(3)), "third", Dist(2)] |
-    [(Token::Ordinals(Ordinals::Third), Priority(3)), "three", Dist(2)]
+    [(Token::Ordinals(Ordinals::Third), Priority(3)), "third", Dist(1)] |
+    [(Token::Ordinals(Ordinals::Third), Priority(3)), "three", Dist(1)]
 );
 define!(fourth:
-    [(Token::Ordinals(Ordinals::Fourth), Priority(3)), "fourth", Dist(2)] |
+    [(Token::Ordinals(Ordinals::Fourth), Priority(3)), "fourth", Dist(1)] |
     [(Token::Ordinals(Ordinals::Fourth), Priority(3)), "four", Dist(1)]
 );
 define!(fifth:
-    [(Token::Ordinals(Ordinals::Fifth), Priority(3)), "fifth", Dist(2)] |
+    [(Token::Ordinals(Ordinals::Fifth), Priority(3)), "fifth", Dist(1)] |
     [(Token::Ordinals(Ordinals::Fifth), Priority(3)), "five", Dist(1)]
 );
 define!(sixth:
-    [(Token::Ordinals(Ordinals::Sixth), Priority(3)), "sixth", Dist(2)] |
+    [(Token::Ordinals(Ordinals::Sixth), Priority(3)), "sixth", Dist(1)] |
     [(Token::Ordinals(Ordinals::Sixth), Priority(3)), "six", Dist(0)]
 );
 define!(seventh:
-    [(Token::Ordinals(Ordinals::Seventh), Priority(3)), "seventh", Dist(3)] |
-    [(Token::Ordinals(Ordinals::Seventh), Priority(3)), "seven", Dist(2)]
+    [(Token::Ordinals(Ordinals::Seventh), Priority(3)), "seventh", Dist(1)] |
+    [(Token::Ordinals(Ordinals::Seventh), Priority(3)), "seven", Dist(1)]
 );
 define!(eighth:
-    [(Token::Ordinals(Ordinals::Eighth), Priority(3)), "eighth", Dist(2)] |
+    [(Token::Ordinals(Ordinals::Eighth), Priority(3)), "eighth", Dist(1)] |
     [(Token::Ordinals(Ordinals::Eighth), Priority(3)), "eight", Dist(1)]
 );
 define!(ninth:
-    [(Token::Ordinals(Ordinals::Ninth), Priority(3)), "ninth", Dist(2)] |
+    [(Token::Ordinals(Ordinals::Ninth), Priority(3)), "ninth", Dist(1)] |
     [(Token::Ordinals(Ordinals::Ninth), Priority(3)), "nine", Dist(1)]
 );
 define!(tenth:
-    [(Token::Ordinals(Ordinals::Tenth), Priority(3)), "tenth", Dist(2)] |
+    [(Token::Ordinals(Ordinals::Tenth), Priority(3)), "tenth", Dist(1)] |
     [(Token::Ordinals(Ordinals::Tenth), Priority(3)), "ten", Dist(0)]
 );
 define!(eleventh:
-    [(Token::Ordinals(Ordinals::Eleventh), Priority(3)), "eleventh", Dist(3)] |
-    [(Token::Ordinals(Ordinals::Eleventh), Priority(3)), "eleven", Dist(2)]
+    [(Token::Ordinals(Ordinals::Eleventh), Priority(3)), "eleventh", Dist(2)] |
+    [(Token::Ordinals(Ordinals::Eleventh), Priority(3)), "eleven", Dist(1)]
 );
 define!(twelfth:
-    [(Token::Ordinals(Ordinals::Twelfth), Priority(3)), "twelfth", Dist(2)] |
-    [(Token::Ordinals(Ordinals::Twelfth), Priority(3)), "twelve", Dist(2)]
+    [(Token::Ordinals(Ordinals::Twelfth), Priority(3)), "twelfth", Dist(1)] |
+    [(Token::Ordinals(Ordinals::Twelfth), Priority(3)), "twelve", Dist(1)]
 );
 define!(thirteenth:
-    [(Token::Ordinals(Ordinals::Thirteenth), Priority(3)), "thirteenth", Dist(3)] |
-    [(Token::Ordinals(Ordinals::Thirteenth), Priority(3)), "thirteen", Dist(2)]
+    [(Token::Ordinals(Ordinals::Thirteenth), Priority(3)), "thirteenth", Dist(2)] |
+    [(Token::Ordinals(Ordinals::Thirteenth), Priority(3)), "thirteen", Dist(1)]
 );
 define!(fourteenth:
-    [(Token::Ordinals(Ordinals::Fourteenth), Priority(3)), "fourteenth", Dist(3)] |
-    [(Token::Ordinals(Ordinals::Fourteenth), Priority(3)), "fourteen", Dist(2)]
+    [(Token::Ordinals(Ordinals::Fourteenth), Priority(3)), "fourteenth", Dist(2)] |
+    [(Token::Ordinals(Ordinals::Fourteenth), Priority(3)), "fourteen", Dist(1)]
 );
 define!(fifteenth:
-    [(Token::Ordinals(Ordinals::Fifteenth), Priority(3)), "fifteenth", Dist(3)] |
-    [(Token::Ordinals(Ordinals::Fifteenth), Priority(3)), "fifteen", Dist(2)]
+    [(Token::Ordinals(Ordinals::Fifteenth), Priority(3)), "fifteenth", Dist(2)] |
+    [(Token::Ordinals(Ordinals::Fifteenth), Priority(3)), "fifteen", Dist(1)]
 );
 define!(sixteenth:
-    [(Token::Ordinals(Ordinals::Sixteenth), Priority(3)), "sixteenth", Dist(3)] |
-    [(Token::Ordinals(Ordinals::Sixteenth), Priority(3)), "sixteen", Dist(2)]
+    [(Token::Ordinals(Ordinals::Sixteenth), Priority(3)), "sixteenth", Dist(2)] |
+    [(Token::Ordinals(Ordinals::Sixteenth), Priority(3)), "sixteen", Dist(1)]
 );
 define!(seventeenth:
-    [(Token::Ordinals(Ordinals::Seventeenth), Priority(3)), "seventeenth", Dist(3)] |
-    [(Token::Ordinals(Ordinals::Seventeenth), Priority(3)), "seventeen", Dist(3)]
+    [(Token::Ordinals(Ordinals::Seventeenth), Priority(3)), "seventeenth", Dist(2)] |
+    [(Token::Ordinals(Ordinals::Seventeenth), Priority(3)), "seventeen", Dist(2)]
 );
 define!(eighteenth:
-    [(Token::Ordinals(Ordinals::Eighteenth), Priority(3)), "eighteenth", Dist(3)] |
-    [(Token::Ordinals(Ordinals::Eighteenth), Priority(3)), "eighteen", Dist(2)]
+    [(Token::Ordinals(Ordinals::Eighteenth), Priority(3)), "eighteenth", Dist(2)] |
+    [(Token::Ordinals(Ordinals::Eighteenth), Priority(3)), "eighteen", Dist(1)]
 );
 define!(nineteenth:
-    [(Token::Ordinals(Ordinals::Nineteenth), Priority(3)), "nineteenth", Dist(3)] |
-    [(Token::Ordinals(Ordinals::Nineteenth), Priority(3)), "nineteen", Dist(2)]
+    [(Token::Ordinals(Ordinals::Nineteenth), Priority(3)), "nineteenth", Dist(2)] |
+    [(Token::Ordinals(Ordinals::Nineteenth), Priority(3)), "nineteen", Dist(1)]
 );
 
 combine!(ordinal => first | second | third | fourth | fifth | sixth | seventh | eighth | ninth |
@@ -140,47 +140,47 @@ define!(of: (Token::Prepositions(Prepositions::Of), Priority(4)), "of", Dist(0))
 
 define!(
     january:
-    [(Token::Month(Month::January), Priority(5)), "january", Dist(3)] |
+    [(Token::Month(Month::January), Priority(5)), "january", Dist(1)] |
     [(Token::Month(Month::January), Priority(5)), "jan", Dist(0)]
 );
 define!(
     february:
-    [(Token::Month(Month::February), Priority(5)), "february", Dist(3)] |
+    [(Token::Month(Month::February), Priority(5)), "february", Dist(1)] |
     [(Token::Month(Month::February), Priority(5)), "feb", Dist(0)]
 );
-define!(march: (Token::Month(Month::March), Priority(5)), "march", Dist(2));
+define!(march: (Token::Month(Month::March), Priority(5)), "march", Dist(1));
 define!(
     april:
-    [(Token::Month(Month::April), Priority(5)), "april", Dist(2)] |
+    [(Token::Month(Month::April), Priority(5)), "april", Dist(1)] |
     [(Token::Month(Month::April), Priority(5)), "apr", Dist(0)]
 );
 define!(may: (Token::Month(Month::May), Priority(5)), "may", Dist(0));
 define!(june:
-    [(Token::Month(Month::June), Priority(5)), "june", Dist(2)] |
+    [(Token::Month(Month::June), Priority(5)), "june", Dist(1)] |
     [(Token::Month(Month::June), Priority(5)), "jun", Dist(0)]
 );
 define!(july:
-    [(Token::Month(Month::July), Priority(5)), "july", Dist(2)] |
+    [(Token::Month(Month::July), Priority(5)), "july", Dist(1)] |
     [(Token::Month(Month::July), Priority(5)), "jul", Dist(0)]
 );
 define!(august:
-    [(Token::Month(Month::August), Priority(5)), "august", Dist(2)] |
+    [(Token::Month(Month::August), Priority(5)), "august", Dist(1)] |
     [(Token::Month(Month::August), Priority(5)), "aug", Dist(0)]
 );
 define!(september:
-    [(Token::Month(Month::September), Priority(5)), "september", Dist(3)] |
+    [(Token::Month(Month::September), Priority(5)), "september", Dist(1)] |
     [(Token::Month(Month::September), Priority(5)), "sept", Dist(1)]
 );
 define!(october:
-    [(Token::Month(Month::October), Priority(5)), "october", Dist(3)] |
+    [(Token::Month(Month::October), Priority(5)), "october", Dist(1)] |
     [(Token::Month(Month::October), Priority(5)), "oct", Dist(0)]
 );
 define!(november:
-    [(Token::Month(Month::November), Priority(5)), "november", Dist(3)] |
+    [(Token::Month(Month::November), Priority(5)), "november", Dist(1)] |
     [(Token::Month(Month::November), Priority(5)), "nov", Dist(0)]
 );
 define!(december:
-    [(Token::Month(Month::December), Priority(5)), "december", Dist(3)] |
+    [(Token::Month(Month::December), Priority(5)), "december", Dist(1)] |
     [(Token::Month(Month::December), Priority(5)), "dec", Dist(0)]
 );
 

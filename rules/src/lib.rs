@@ -373,7 +373,9 @@ pub(crate) fn remove_overlapped<'a>(
     }
 
     if overlap.is_none() {
-        result.push(last_item.unwrap().clone());
+        if last_item.is_some() {
+            result.push(last_item.unwrap().clone());
+        }
     } else {
         result.push(Err(intersection_error(
             &source_str[overlap.unwrap().start_idx..overlap.unwrap().end_idx],

@@ -62,6 +62,7 @@ pub enum TimeOfDay {
     Morning,
     Evening,
     Noon,
+    Afternoon,
 }
 
 #[derive(Debug, Clone, PartialEq)]

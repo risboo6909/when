@@ -42,7 +42,7 @@ define!(
 
 define!(
     saturday:
-    [(Token::Weekday(Day::Saturday), Priority(0)), "saturday", Dist(2)] |
+    [(Token::Weekday(Day::Saturday), Priority(0)), "saturday", Dist(1)] |
     [(Token::Weekday(Day::Saturday), Priority(0)), "sat", Dist(0)]
 );
 

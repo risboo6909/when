@@ -28,8 +28,9 @@ define!(night: (Token::TimeOfDay(TimeOfDay::Night), Priority(2)), "night", Dist(
 define!(morning: (Token::TimeOfDay(TimeOfDay::Morning), Priority(2)), "morning", Dist(2));
 define!(evening: (Token::TimeOfDay(TimeOfDay::Evening), Priority(2)), "evening", Dist(2));
 define!(noon: (Token::TimeOfDay(TimeOfDay::Noon), Priority(2)), "noon", Dist(1));
+define!(afternoon: (Token::TimeOfDay(TimeOfDay::Afternoon), Priority(2)), "afternoon", Dist(2));
 
-combine!(time_of_day => night | morning | evening | noon);
+combine!(time_of_day => night | morning | evening | noon | afternoon);
 
 named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<usize>,
                              ( TokenDesc, TokenDesc, ) )>,
@@ -42,7 +43,9 @@ named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<usize>,
             // today, tomorrow, yesterday, etc.
             tuple!(apply!(when, exact_match), stub) |
             // now
-            tuple!(apply!(now, exact_match), stub)
+            tuple!(apply!(now, exact_match), stub) |
+            // night, morning, evening, etc
+            tuple!(apply!(time_of_day, exact_match), stub)
         )
     )
 );
@@ -87,6 +90,10 @@ fn make_time<'a, 'b, Tz: TimeZone>(
             }
             Token::TimeOfDay(TimeOfDay::Noon) => {
                 ctx.hour = Some(12);
+                ctx.minute = Some(0);
+            }
+            Token::TimeOfDay(TimeOfDay::Afternoon) => {
+                ctx.hour = Some(15);
                 ctx.minute = Some(0);
             }
             Token::TimeOfDay(TimeOfDay::Evening) => {
