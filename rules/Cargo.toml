@@ -1,7 +1,7 @@
 [package]
 name = "rules"
-version = "0.1.0"
-authors = ["risboo6909 <ttyv00@gmail.com>"]
+version = "0.1.1"
+authors = ["Boris Tatarintsev <ttyv00@gmail.com>"]
 edition = "2018"
 
 [dependencies.nom]
