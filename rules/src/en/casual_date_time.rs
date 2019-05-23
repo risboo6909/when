@@ -9,9 +9,11 @@ use nom::{alt, apply, call, many_till, named_args, tuple, types::CompleteStr};
 define!(now: (Token::When(When::Now), Priority(0)), "now", Dist(0));
 
 define!(last: (Token::When(When::Last), Priority(1)), "last", Dist(1));
+define!(next: (Token::When(When::Next), Priority(1)), "next", Dist(1));
+define!(past: (Token::When(When::Past), Priority(1)), "past", Dist(1));
 define!(this: (Token::Pronouns(Pronouns::This), Priority(1)), "this", Dist(1));
 
-combine!(last_this => last | this);
+combine!(adj => last | this | next | past);
 
 define!(today: (Token::When(When::Today), Priority(1)), "today", Dist(1));
 define!(tonight: (Token::When(When::Tonight), Priority(1)), "tonight", Dist(2));
@@ -37,7 +39,7 @@ named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<usize>,
     many_till!(tokenize_count_symbols,
         alt!(
             // last night, this morning, etc.
-            tuple!(apply!(last_this, exact_match), apply!(time_of_day, exact_match)) |
+            tuple!(apply!(adj, exact_match), apply!(time_of_day, exact_match)) |
             // tomorrow evening, today morning, etc.
             tuple!(apply!(when, exact_match), apply!(time_of_day, exact_match)) |
             // today, tomorrow, yesterday, etc.
@@ -62,9 +64,11 @@ fn make_time<'a, 'b, Tz: TimeZone>(
     let token = res.token_by_priority(Priority(1));
     if token.is_some() {
         match token.unwrap() {
-            Token::When(When::Last) => {
-                ctx.hour = Some(23);
+            Token::When(When::Last) | Token::When(When::Past) => {
                 ctx.set_duration(-24 * i64::from(consts::HOUR));
+            }
+            Token::When(When::Next) => {
+                ctx.set_duration(24 * i64::from(consts::HOUR));
             }
             Token::When(When::Tomorrow) => {
                 ctx.set_duration(24 * i64::from(consts::HOUR));
@@ -196,7 +200,7 @@ mod tests {
         assert_eq!(result.get_duration_sec(), -24 * consts::HOUR as i64);
         assert_eq!(result.get_hours(), 8);
 
-        let result = interpret("Last night I fell asleep", false, fixed_time()).unwrap();
+        let result = interpret("last night I fell asleep", false, fixed_time()).unwrap();
         assert_eq!(
             result.bounds,
             Some(MatchBounds {
@@ -206,5 +210,16 @@ mod tests {
         );
         assert_eq!(result.get_duration_sec(), -24 * consts::HOUR as i64);
         assert_eq!(result.get_hours(), 23);
+
+        let result = interpret("come next evening please", false, fixed_time()).unwrap();
+        assert_eq!(
+            result.bounds,
+            Some(MatchBounds {
+                start_idx: 5,
+                end_idx: 17
+            })
+        );
+        assert_eq!(result.get_duration_sec(), 24 * consts::HOUR as i64);
+        assert_eq!(result.get_hours(), 18);
     }
 }
