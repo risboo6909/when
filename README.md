@@ -12,7 +12,7 @@ Inspired by https://github.com/olebedev/when
 * drop me a line **next wednesday at 2:25 p.m**
 * it could be done at **11 am past tuesday**
 
-As a demonstration, check out a simple HTTP web server https://github.com/risboo6909/when-http which parses natural language date/time using this library.
+As a demonstration, check out a simple HTTP web [server](https://github.com/risboo6909/when-http) which parses natural language date/time using this library.
 
 #### Key features
 
