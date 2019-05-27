@@ -54,6 +54,6 @@ Today 21:50 and tomorrow 22:00
 
 First two terms **Today** and **21:5O** will be merged together as the distance between them is less than or equal to 5. So the final result will be as if there were one match which captures the term **Today 21:50** as the whole. The same thing will happen with the next two terms (**tomorrow** and **22:00**), despite the fact that they match by different rules, rules results will be merged together because the distance between matches is less than or equal to 5.
 
-#### Final noteless than 
+#### Final note
 
 This is my humble attempt to create a rust library. Although I tried to do my best, I know there are a lot of undiscovered bugs in there and my code is not at all perfect, so I will appreciate any help to make it more stable and better.
