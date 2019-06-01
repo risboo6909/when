@@ -4,6 +4,8 @@ A natural language date/time parser with pluggable rules
 
 Inspired by https://github.com/olebedev/when
 
+Check out how it works interactively at https://tinyurl.com/y593ppw6
+
 #### Examples
 
 * **tonight at 11:10 pm**
