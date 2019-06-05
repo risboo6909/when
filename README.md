@@ -4,7 +4,7 @@ A natural language date/time parser with pluggable rules
 
 Inspired by https://github.com/olebedev/when
 
-Check out how it works interactively at https://tinyurl.com/when-http
+Check out how it works interactively at https://risboo6909.org/when/ or at https://tarpaha.github.io/when/
 
 #### Examples
 
