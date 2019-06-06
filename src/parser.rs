@@ -10,8 +10,8 @@ type ParserType<'a, Tz> =
 pub struct Parser<'a, Tz: TimeZone> {
     lang_parser: Box<ParserType<'a, Tz>>,
     exact_match: bool,
-    tz: Tz,
     max_dist: usize,
+    tz: Tz,
 }
 
 impl<'a, Tz: TimeZone> Parser<'a, Tz> {
@@ -33,7 +33,7 @@ impl<'a, Tz: TimeZone> Parser<'a, Tz> {
         &self.tz
     }
 
-    fn recognize_helper(
+    fn parser_helper(
         &self,
         now: NaiveDateTime,
         input: &'a str,
@@ -47,18 +47,18 @@ impl<'a, Tz: TimeZone> Parser<'a, Tz> {
     }
 
     // convert date/time to chrono
-    pub fn recognize(&self, input: &'a str) -> Vec<Result<DateTime<Tz>, DateTimeError>> {
-        let (tz_aware, merged) = self.recognize_helper(Utc::now().naive_utc(), input);
+    pub fn parse(&self, input: &'a str) -> Vec<Result<DateTime<Tz>, DateTimeError>> {
+        let (tz_aware, merged) = self.parser_helper(Utc::now().naive_utc(), input);
         self.to_chrono(tz_aware, merged)
     }
 
     // convert date/time to chrono
-    pub fn recognize_fixed_time(
+    pub fn parse_fixed_time(
         &self,
         now: NaiveDateTime,
         input: &'a str,
     ) -> Vec<Result<DateTime<Tz>, DateTimeError>> {
-        let (tz_aware, merged) = self.recognize_helper(now, input);
+        let (tz_aware, merged) = self.parser_helper(now, input);
         self.to_chrono(tz_aware, merged)
     }
 

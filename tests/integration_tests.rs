@@ -16,7 +16,7 @@ fn assert_date_time<'a, Tz: TimeZone>(
     expected_date_time_strs: &[&str],
     expected_length: usize,
 ) {
-    let res = parser.recognize_fixed_time(fixed_time(), input);
+    let res = parser.parse_fixed_time(fixed_time(), input);
 
     assert_eq!(res.len(), expected_length);
 
@@ -70,7 +70,7 @@ fn test_multiple_results() {
 fn test_overlap_error() {
     let parser = when::parser::Parser::new(Box::new(when::en), chrono_tz::Europe::Moscow, 5, false);
 
-    let res = parser.recognize_fixed_time(
+    let res = parser.parse_fixed_time(
         fixed_time(),
         "Call me next march 13 seconds ago, something else, next monday",
     );
