@@ -13,9 +13,10 @@ use nom::{
     take_while, tuple, types::CompleteStr, ErrorKind,
 };
 
-pub use crate::errors::{intersection_error, DateTimeError, SemanticError};
 use chrono::{DateTime, TimeZone};
 use strsim::damerau_levenshtein;
+
+pub use crate::errors::{intersection_error, DateTimeError, SemanticError};
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub struct Dist(pub usize);
