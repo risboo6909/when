@@ -1,5 +1,4 @@
-use chrono::offset::TimeZone;
-use chrono::offset::Utc;
+use chrono::offset::{TimeZone, Utc};
 use chrono::{DateTime, Datelike, NaiveDateTime, Timelike};
 use rules::rules::{Context, MatchResult};
 use rules::DateTimeError;
@@ -7,26 +6,37 @@ use rules::DateTimeError;
 type ParserType<'a, Tz> =
     Fn(DateTime<Tz>, &'a str, bool) -> Vec<Result<MatchResult, DateTimeError>>;
 
-pub struct Parser<'a, Tz: TimeZone> {
-    lang_parser: Box<ParserType<'a, Tz>>,
+pub struct Parser<'a, Tz: TimeZone + 'a> {
+    lang_parser:
+        Box<Fn(DateTime<Tz>, &'a str, bool) -> Vec<Result<MatchResult, DateTimeError>> + 'a>,
     exact_match: bool,
     max_dist: usize,
     tz: Tz,
 }
 
-impl<'a, Tz: TimeZone> Parser<'a, Tz> {
-    pub fn new(
-        parser_func: Box<ParserType<'a, Tz>>,
-        tz: Tz,
-        max_dist: usize,
-        exact_match: bool,
-    ) -> Self {
+impl<'a, Tz: TimeZone + 'a> Parser<'a, Tz> {
+    pub fn new(tz: Tz) -> Self {
         Parser {
-            lang_parser: parser_func,
-            exact_match,
+            lang_parser: Box::new(super::en),
+            exact_match: false,
+            max_dist: 5,
             tz,
-            max_dist,
         }
+    }
+
+    pub fn parser(mut self, parser_func: Box<ParserType<'a, Tz>>) -> Self {
+        self.lang_parser = parser_func;
+        self
+    }
+
+    pub fn max_dist(mut self, max_dist: usize) -> Self {
+        self.max_dist = max_dist;
+        self
+    }
+
+    pub fn fuzzy_parse(mut self, fuzzy_parse: bool) -> Self {
+        self.exact_match = !fuzzy_parse;
+        self
     }
 
     pub fn get_tz(&self) -> &Tz {

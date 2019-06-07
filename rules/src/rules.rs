@@ -139,7 +139,7 @@ impl<'a> RuleResult<'a> {
                     _ => unreachable!(),
                 })
                 .next()
-                .map_or(None, |x| Some(x.clone())),
+                .and_then(|x| Some(x.clone())),
             None => None,
         }
     }
