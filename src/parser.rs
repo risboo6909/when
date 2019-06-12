@@ -142,6 +142,9 @@ impl<'a, Tz: TimeZone> Parser<'a, Tz> {
             if ctx.minute.is_some() {
                 tz_aware = tz_aware.with_minute(ctx.minute.unwrap() as u32).unwrap();
             }
+
+            tz_aware = tz_aware.with_nanosecond(0).unwrap();
+
             ready.push(Ok(tz_aware));
         }
         ready
