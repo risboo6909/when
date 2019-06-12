@@ -43,9 +43,9 @@ named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<usize>,
             tuple!(hours, colon, minutes, apply!(am_pm, exact_match)) |
             // hours:minutes am/pm, for example 5-30am, 4-44pm, etc.
             tuple!(hours, dash, minutes, apply!(am_pm, exact_match)) |
-            // hours:minutes am/pm, for example 5:30, 4:44, etc.
+            // hours:minutes, for example 5:30, 4:44, etc.
             tuple!(hours, colon, minutes, stub) |
-            // hours:minutes am/pm, for example 5-30, 4-44, etc.
+            // hours-minutes, for example 5-30, 4-44, etc.
             tuple!(hours, dash, minutes, stub) |
             // hours, for example 5am, 6p.m., 4a., 3 p.m.
             tuple!(hours, apply!(am_pm, exact_match), stub, stub)
