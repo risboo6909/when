@@ -16,7 +16,7 @@ fn assert_date_time<'a, Tz: TimeZone>(
     expected_date_time_strs: &[&str],
     expected_length: usize,
 ) {
-    let res = parser.recognize_fixed_time(fixed_time(), input);
+    let res = parser.parse_fixed_time(fixed_time(), input);
 
     assert_eq!(res.len(), expected_length);
 
@@ -31,36 +31,36 @@ fn assert_date_time<'a, Tz: TimeZone>(
 
 #[test]
 fn test_basic() {
-    let parser = when::parser::Parser::new(Box::new(when::en), chrono_tz::Europe::Moscow, 8, false);
+    let parser = when::parser::Parser::new(chrono_tz::Europe::Moscow).max_dist(8);
     assert_date_time(
         parser,
         "if I will finish this project in the hlf of yar",
-        &["2019-02-03T15:34:56"],
+        &["2019-02-03T15:34:00"],
         1,
     );
 }
 
 #[test]
 fn test_merge_parse_results() {
-    let parser = when::parser::Parser::new(Box::new(when::en), chrono_tz::Europe::Moscow, 5, false);
+    let parser = when::parser::Parser::new(chrono_tz::Europe::Moscow);
     assert_date_time(
         parser,
         "Call me next mnday at 6P.m.",
-        &["2018-08-06T18:00:56"],
+        &["2018-08-06T18:00:00"],
         1,
     );
 }
 
 #[test]
 fn test_multiple_results() {
-    let parser = when::parser::Parser::new(Box::new(when::en), chrono_tz::Europe::Moscow, 3, false);
+    let parser = when::parser::Parser::new(chrono_tz::Europe::Moscow).max_dist(3);
     assert_date_time(
         parser,
         "Today 21:50 and tomorrow 22:00 also yesterday   5a.m.",
         &[
-            "2018-08-03T21:50:56",
-            "2018-08-04T22:00:56",
-            "2018-08-02T05:00:56",
+            "2018-08-03T21:50:00",
+            "2018-08-04T22:00:00",
+            "2018-08-02T05:00:00",
         ],
         3,
     );
@@ -68,9 +68,9 @@ fn test_multiple_results() {
 
 #[test]
 fn test_overlap_error() {
-    let parser = when::parser::Parser::new(Box::new(when::en), chrono_tz::Europe::Moscow, 5, false);
+    let parser = when::parser::Parser::new(chrono_tz::Europe::Moscow);
 
-    let res = parser.recognize_fixed_time(
+    let res = parser.parse_fixed_time(
         fixed_time(),
         "Call me next march 13 seconds ago, something else, next monday",
     );
@@ -84,7 +84,7 @@ fn test_overlap_error() {
         })
     );
 
-    let naive = chrono::NaiveDateTime::from_str("2018-08-06T15:34:56").unwrap();
+    let naive = chrono::NaiveDateTime::from_str("2018-08-06T15:34:00").unwrap();
     assert_eq!(
         res[1],
         Ok(chrono_tz::Europe::Moscow
@@ -94,18 +94,24 @@ fn test_overlap_error() {
 }
 
 #[test]
-fn test_various_requests() {
-    let parser = when::parser::Parser::new(Box::new(when::en), chrono_tz::Europe::Moscow, 5, false);
-    assert_date_time(parser, "at Saturday afternoon", &["2018-08-04T15:00:56"], 1);
+fn test_seconds_delta() {
+    let parser = when::parser::Parser::new(chrono_tz::Europe::Moscow);
+    assert_date_time(parser, "in 20 seconds", &["2018-08-03T15:35:16"], 1);
+}
 
-    let parser = when::parser::Parser::new(Box::new(when::en), chrono_tz::Europe::Moscow, 5, false);
+#[test]
+fn test_various_requests() {
+    let parser = when::parser::Parser::new(chrono_tz::Europe::Moscow);
+    assert_date_time(parser, "at Saturday afternoon", &["2018-08-04T15:00:00"], 1);
+
+    let parser = when::parser::Parser::new(chrono_tz::Europe::Moscow);
     assert_date_time(
         parser,
         "drop me a line next wednesday at 2:25 p.m",
-        &["2018-08-08T14:25:56"],
+        &["2018-08-08T14:25:00"],
         1,
     );
 
-    let parser = when::parser::Parser::new(Box::new(when::en), chrono_tz::Europe::Moscow, 5, false);
-    assert_date_time(parser, "in 1 hour", &["2018-08-03T16:34:56"], 1);
+    let parser = when::parser::Parser::new(chrono_tz::Europe::Moscow);
+    assert_date_time(parser, "in 1 hour", &["2018-08-03T16:34:00"], 1);
 }

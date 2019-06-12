@@ -123,7 +123,8 @@ impl<'a> RuleResult<'a> {
         self
     }
 
-    fn filter_by_priority(&self, priority: Priority) -> Vec<&Token> {
+    /// Finds the first token which satisfies required priority
+    pub(crate) fn token_by_priority(&self, priority: Priority) -> Option<Token> {
         match &self.tokens {
             Some(tokens) => tokens
                 .iter()
@@ -137,17 +138,10 @@ impl<'a> RuleResult<'a> {
                     }
                     _ => unreachable!(),
                 })
-                .collect(),
-            None => Vec::new(),
+                .next()
+                .and_then(|x| Some(x.clone())),
+            None => None,
         }
-    }
-
-    pub fn token_by_priority(&self, priority: Priority) -> Option<Token> {
-        let res = self.filter_by_priority(priority);
-        if !res.is_empty() {
-            return Some(res[0].clone());
-        }
-        None
     }
 
     pub fn set_tail(&mut self, tail: &'a str) {
