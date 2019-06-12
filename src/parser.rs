@@ -137,6 +137,10 @@ impl<'a, Tz: TimeZone + 'a> Parser<'a, Tz> {
 
             tz_aware = tz_aware + ctx.duration;
 
+            if ctx.duration.num_seconds() % 60 == 0 {
+                tz_aware = tz_aware.with_second(0).unwrap();
+            }
+
             if ctx.year.is_some() {
                 tz_aware = tz_aware.with_year(ctx.year.unwrap()).unwrap();
             }
@@ -152,6 +156,7 @@ impl<'a, Tz: TimeZone + 'a> Parser<'a, Tz> {
             if ctx.minute.is_some() {
                 tz_aware = tz_aware.with_minute(ctx.minute.unwrap() as u32).unwrap();
             }
+
             ready.push(Ok(tz_aware));
         }
         ready

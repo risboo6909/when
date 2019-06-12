@@ -35,7 +35,7 @@ fn test_basic() {
     assert_date_time(
         parser,
         "if I will finish this project in the hlf of yar",
-        &["2019-02-03T15:34:56"],
+        &["2019-02-03T15:34:00"],
         1,
     );
 }
@@ -46,7 +46,7 @@ fn test_merge_parse_results() {
     assert_date_time(
         parser,
         "Call me next mnday at 6P.m.",
-        &["2018-08-06T18:00:56"],
+        &["2018-08-06T18:00:00"],
         1,
     );
 }
@@ -58,9 +58,9 @@ fn test_multiple_results() {
         parser,
         "Today 21:50 and tomorrow 22:00 also yesterday   5a.m.",
         &[
-            "2018-08-03T21:50:56",
-            "2018-08-04T22:00:56",
-            "2018-08-02T05:00:56",
+            "2018-08-03T21:50:00",
+            "2018-08-04T22:00:00",
+            "2018-08-02T05:00:00",
         ],
         3,
     );
@@ -84,7 +84,7 @@ fn test_overlap_error() {
         })
     );
 
-    let naive = chrono::NaiveDateTime::from_str("2018-08-06T15:34:56").unwrap();
+    let naive = chrono::NaiveDateTime::from_str("2018-08-06T15:34:00").unwrap();
     assert_eq!(
         res[1],
         Ok(chrono_tz::Europe::Moscow
@@ -94,18 +94,24 @@ fn test_overlap_error() {
 }
 
 #[test]
+fn test_seconds_delta() {
+    let parser = when::parser::Parser::new(chrono_tz::Europe::Moscow);
+    assert_date_time(parser, "in 20 seconds", &["2018-08-03T15:35:16"], 1);
+}
+
+#[test]
 fn test_various_requests() {
     let parser = when::parser::Parser::new(chrono_tz::Europe::Moscow);
-    assert_date_time(parser, "at Saturday afternoon", &["2018-08-04T15:00:56"], 1);
+    assert_date_time(parser, "at Saturday afternoon", &["2018-08-04T15:00:00"], 1);
 
     let parser = when::parser::Parser::new(chrono_tz::Europe::Moscow);
     assert_date_time(
         parser,
         "drop me a line next wednesday at 2:25 p.m",
-        &["2018-08-08T14:25:56"],
+        &["2018-08-08T14:25:00"],
         1,
     );
 
     let parser = when::parser::Parser::new(chrono_tz::Europe::Moscow);
-    assert_date_time(parser, "in 1 hour", &["2018-08-03T16:34:56"], 1);
+    assert_date_time(parser, "in 1 hour", &["2018-08-03T16:34:00"], 1);
 }
