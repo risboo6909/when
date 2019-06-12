@@ -28,10 +28,11 @@ use chrono_tz;
 use when;
 
 fn main() {
-    // first argument - is a specific parser (only english is available for the moment), then a timezone, maximum merge
-    // distance and whether an exact match must be used (false - enables fuzzy matching)
-    let parser = when::parser::Parser::new(Box::new(when::en), chrono_tz::Europe::Moscow, 3, false);
-    println!("{:?}", parser.recognize("today 18p.m."));
+    let parser = when::parser::Parser::new(chrono_tz::Europe::Moscow)
+        .parser(Box::new(when::en))
+        .max_dist(3)
+        .fuzzy_parse(true);
+    println!("{:?}", parser.parse("today 18p.m."));
 }
 ```
 
