@@ -3,6 +3,11 @@ name = "rules"
 version = "0.1.1"
 authors = ["Boris Tatarintsev <ttyv00@gmail.com>"]
 edition = "2018"
+description = "English language pack for 'when' a natural language date/time parsing library"
+documentation = "https://github.com/risboo6909/when"
+repository = "https://github.com/risboo6909/when"
+license = "MIT"
+license-file = "LICENSE"
 
 [dependencies.nom]
 version = "4.2"

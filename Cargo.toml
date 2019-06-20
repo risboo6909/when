@@ -3,6 +3,11 @@ name = "when"
 version = "0.1.1"
 authors = ["Boris Tatarintsev <ttyv00@gmail.com>"]
 edition = "2018"
+description = "'When' parses natural language date/time and produces computer friendly output structures"
+documentation = "https://github.com/risboo6909/when"
+repository = "https://github.com/risboo6909/when"
+license = "MIT"
+license-file = "LICENSE"
 
 [workspace]
 members = [
@@ -12,4 +17,4 @@ members = [
 [dependencies]
 chrono = "0.4"
 chrono-tz = "0.4"
-rules = { path = "rules" }
+rules = { path = "rules", version = "0.1.1" }
