@@ -3,7 +3,8 @@
 //! This library is inspired by https://github.com/olebedev/when
 
 pub mod parser;
+pub(crate) mod rules;
 
 pub use parser::Parser;
 pub use rules::en::parse as en;
-pub use rules::DateTimeError;
+pub use rules::errors::DateTimeError;

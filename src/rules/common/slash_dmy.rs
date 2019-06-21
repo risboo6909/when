@@ -1,11 +1,9 @@
+use super::combinators::{stub, tokenize_count_symbols};
+use super::common::{is_leap_year, DAYS_IN_MONTH};
+use super::errors::{invalid_time_error, SemanticError};
+use super::rules::{Context, RuleResult, TokenDesc};
+use super::tokens::{Priority, Token};
 use chrono::prelude::*;
-
-use super::super::Context;
-use super::{is_leap_year, DAYS_IN_MONTH};
-use crate::errors::{invalid_time_error, SemanticError};
-use crate::tokens::{Priority, Token};
-use crate::{rules::RuleResult, stub, tokenize_count_symbols, TokenDesc};
-
 use nom::{alt, many_till, named_args, tuple, types::CompleteStr};
 
 define_num!(day: (Token::Number, Priority(0)));
@@ -86,7 +84,7 @@ fn make_time<'a, 'b, Tz: TimeZone>(
 #[cfg(test)]
 mod tests {
     use super::interpret;
-    use crate::errors::invalid_time_error;
+    use crate::rules::errors::invalid_time_error;
     use chrono::prelude::*;
 
     fn fixed_time() -> DateTime<Local> {

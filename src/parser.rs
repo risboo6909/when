@@ -1,7 +1,7 @@
+use crate::rules::errors::DateTimeError;
+use crate::rules::rules::{Context, MatchResult};
 use chrono::offset::{TimeZone, Utc};
 use chrono::{DateTime, Datelike, NaiveDateTime, Timelike};
-use rules::rules::{Context, MatchResult};
-use rules::DateTimeError;
 
 type ParserType<'a, Tz> =
     Fn(DateTime<Tz>, &'a str, bool) -> Vec<Result<MatchResult, DateTimeError>>;
