@@ -1,6 +1,6 @@
 [package]
 name = "when"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Boris Tatarintsev <ttyv00@gmail.com>"]
 edition = "2018"
 description = "'When' parses natural language date/time and produces computer friendly output structures"
