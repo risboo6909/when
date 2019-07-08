@@ -1,4 +1,4 @@
-use super::rules::{FnRule, MatchBounds, MatchResult, MyResult, RuleResult, TokenDesc};
+use super::types::{FnRule, MatchBounds, MatchResult, MyResult, RuleResult, TokenDesc};
 
 use core::borrow::BorrowMut;
 use nom::{
@@ -78,7 +78,7 @@ macro_rules! define {
 
 macro_rules! define_char {
     ( $func_name: ident: $p: expr, $repr: expr ) => {
-        fn $func_name(input: CompleteStr) -> crate::rules::rules::MyResult {
+        fn $func_name(input: CompleteStr) -> crate::rules::types::MyResult {
             if let Ok((tail, _)) = crate::rules::combinators::recognize_symbol(input, $repr) {
                 return Ok((
                     tail,
@@ -98,10 +98,9 @@ macro_rules! define_char {
 /// Example:
 ///
 /// define_num!(hour, (Token::Hour, 0));
-///
 macro_rules! define_num {
     ( $func_name: ident: ($ctor: expr, $p: expr) ) => {
-        fn $func_name(input: CompleteStr) -> crate::rules::rules::MyResult {
+        fn $func_name(input: CompleteStr) -> crate::rules::types::MyResult {
             if let Ok((tail, n)) = crate::rules::combinators::recognize_int(input) {
                 return Ok((
                     tail,
@@ -175,8 +174,8 @@ fn is_ignorable(c: char) -> bool {
     !(c == '/' || c == ':' || c == '-' || c.is_alphanumeric())
 }
 
-/// Trim spaces, special symbols and commas until any non-whitespace character appears
-named!(trim<CompleteStr, CompleteStr>,
+named!(#[doc="Trim spaces, special symbols and commas until any non-whitespace character appears"], 
+trim<CompleteStr, CompleteStr>,
     take_while!(is_ignorable)
 );
 
@@ -184,31 +183,25 @@ fn is_word_symbol(c: char) -> bool {
     c == '.' || c == ':' || c.is_alphanumeric()
 }
 
-/// Ignores whitespaces using "trim" and then consumes alphabetical characters in a string until
-/// any non alpha-numeric character appears or the string has been exhausted:
-///
-/// "  , abracadabra  " -> "abracadabra"
-named!(tokenize_word<CompleteStr, CompleteStr>,
+named!(#[doc="Ignores whitespaces using \"trim\" and then consumes alphabetical characters in a string until \
+              any non alpha-numeric character appears or the string has been exhausted:\n\n\
+              \"  , abracadabra  \" -> \"abracadabra\""], tokenize_word<CompleteStr, CompleteStr>,
     preceded!(trim, take_while!(is_word_symbol))
 );
 
-/// Consumes all spaces before a word, the word itself and all spaces after the word and returns
-/// total number of consumed characters:
-///
-/// "  , abracadabra  " -> 17
-named!(pub(crate) tokenize_count_symbols<CompleteStr, usize>,
+named!(#[doc="Consumes all spaces before a word, the word itself and all spaces after the word and returns \
+              total number of consumed characters:\n\n\
+              \"  , abracadabra  \" -> 17"], pub(crate) tokenize_count_symbols<CompleteStr, usize>,
     map!(tuple!(trim, take_while!(|c: char| c == '.' || c == ':' || c.is_alphanumeric()), trim),
     |(prefix, word, suffix)| {
         prefix.len() + word.len() + suffix.len()
     })
 );
 
-/// Ignores whitespaces using "trim" and then consumes digits in a string until
-/// any non digit character appears or the string has been exhausted, and in case of success
-/// converts the number from the string representation into i32:
-///
-/// "  , -321  " -> -321
-named!(pub(crate) recognize_int<CompleteStr, i32>,
+named!(#[doc="Ignores whitespaces using \"trim\" and then consumes digits in a string until \
+              any non digit character appears or the string has been exhausted, and in case of success \
+              converts the number from the string representation into i32:\n\n\
+              \"  , -321  \" -> -321"], pub(crate) recognize_int<CompleteStr, i32>,
     map!(
         preceded!(trim, pair!(
             opt!(alt!(tag!("+") | tag!("-"))),
@@ -478,6 +471,6 @@ pub(crate) fn match_bounds(
     prefix_len: usize,
     input: &str,
     tail: CompleteStr,
-) -> crate::rules::rules::MatchBounds {
-    crate::rules::rules::MatchBounds::new(prefix_len, input.len() - tail.len())
+) -> crate::rules::types::MatchBounds {
+    crate::rules::types::MatchBounds::new(prefix_len, input.len() - tail.len())
 }

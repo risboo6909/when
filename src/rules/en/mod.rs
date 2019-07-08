@@ -10,15 +10,15 @@ use crate::rules::common;
 use crate::rules::common_matchers;
 use crate::rules::consts;
 use crate::rules::errors;
-use crate::rules::rules;
 use crate::rules::tokens;
+use crate::rules::types;
 use chrono::{offset::TimeZone, DateTime};
 
 pub fn parse<'a, Tz: TimeZone + 'a>(
     tz_aware: DateTime<Tz>,
     input: &'a str,
     exact_match: bool,
-) -> Vec<Result<rules::MatchResult, errors::DateTimeError>> {
+) -> Vec<Result<types::MatchResult, errors::DateTimeError>> {
     let input_lowered = input.to_lowercase();
     combinators::apply_generic(
         tz_aware,

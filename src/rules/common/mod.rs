@@ -1,8 +1,8 @@
 use crate::rules::combinators;
 use crate::rules::common;
 use crate::rules::errors;
-use crate::rules::rules;
 use crate::rules::tokens;
+use crate::rules::types;
 
 pub mod slash_dmy;
 

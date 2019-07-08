@@ -2,8 +2,8 @@ use super::combinators::{stub, tokenize_count_symbols, Dist};
 use super::common_matchers::match_num;
 use super::consts;
 use super::errors::{invalid_time_error, SemanticError};
-use super::rules::{Context, RuleResult, TokenDesc};
 use super::tokens::{Adverbs, Articles, IntWord, Priority, TimeInterval, Token};
+use super::types::{Context, RuleResult, TokenDesc};
 use chrono::prelude::*;
 use nom::{alt, apply, call, many_till, named_args, tuple, types::CompleteStr};
 

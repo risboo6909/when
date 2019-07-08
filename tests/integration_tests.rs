@@ -10,7 +10,7 @@ fn fixed_time() -> NaiveDateTime {
     NaiveDateTime::new(d, t)
 }
 
-fn assert_date_time<'a, Tz: TimeZone>(
+fn parse_and_assert<'a, Tz: TimeZone>(
     parser: Parser<'a, Tz>,
     input: &'a str,
     expected_date_time_strs: &[&str],
@@ -32,7 +32,7 @@ fn assert_date_time<'a, Tz: TimeZone>(
 #[test]
 fn test_basic() {
     let parser = when::parser::Parser::new(chrono_tz::Europe::Moscow).max_dist(8);
-    assert_date_time(
+    parse_and_assert(
         parser,
         "if I will finish this project in the hlf of yar",
         &["2019-02-03T15:34:00"],
@@ -43,7 +43,7 @@ fn test_basic() {
 #[test]
 fn test_merge_parse_results() {
     let parser = when::parser::Parser::new(chrono_tz::Europe::Moscow);
-    assert_date_time(
+    parse_and_assert(
         parser,
         "Call me next mnday at 6P.m.",
         &["2018-08-06T18:00:00"],
@@ -54,7 +54,7 @@ fn test_merge_parse_results() {
 #[test]
 fn test_multiple_results() {
     let parser = when::parser::Parser::new(chrono_tz::Europe::Moscow).max_dist(3);
-    assert_date_time(
+    parse_and_assert(
         parser,
         "Today 21:50 and tomorrow 22:00 also yesterday   5a.m.",
         &[
@@ -96,16 +96,16 @@ fn test_overlap_error() {
 #[test]
 fn test_seconds_delta() {
     let parser = when::parser::Parser::new(chrono_tz::Europe::Moscow);
-    assert_date_time(parser, "in 20 seconds", &["2018-08-03T15:35:16"], 1);
+    parse_and_assert(parser, "in 20 seconds", &["2018-08-03T15:35:16"], 1);
 }
 
 #[test]
 fn test_various_requests() {
     let parser = when::parser::Parser::new(chrono_tz::Europe::Moscow);
-    assert_date_time(parser, "at Saturday afternoon", &["2018-08-04T15:00:00"], 1);
+    parse_and_assert(parser, "at Saturday afternoon", &["2018-08-04T15:00:00"], 1);
 
     let parser = when::parser::Parser::new(chrono_tz::Europe::Moscow);
-    assert_date_time(
+    parse_and_assert(
         parser,
         "drop me a line next wednesday at 2:25 p.m",
         &["2018-08-08T14:25:00"],
@@ -113,5 +113,5 @@ fn test_various_requests() {
     );
 
     let parser = when::parser::Parser::new(chrono_tz::Europe::Moscow);
-    assert_date_time(parser, "in 1 hour", &["2018-08-03T16:34:00"], 1);
+    parse_and_assert(parser, "in 1 hour", &["2018-08-03T16:34:00"], 1);
 }

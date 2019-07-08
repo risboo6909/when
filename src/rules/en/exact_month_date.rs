@@ -2,8 +2,8 @@ use super::combinators::{stub, tokenize_count_symbols, Dist};
 use super::common::{is_leap_year, DAYS_IN_MONTH};
 use super::common_matchers::match_ordinal;
 use super::errors::{invalid_time_error, SemanticError};
-use super::rules::{Context, RuleResult, TokenDesc};
 use super::tokens::{Month, Ordinals, Prepositions, Priority, Token};
+use super::types::{Context, RuleResult, TokenDesc};
 use chrono::prelude::*;
 
 use nom::{alt, apply, call, many_till, named_args, tuple, types::CompleteStr};

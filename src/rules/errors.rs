@@ -1,4 +1,4 @@
-use super::rules::MatchBounds;
+use super::types::MatchBounds;
 use failure::Fail;
 use nom::types::CompleteStr;
 use serde::Serialize;

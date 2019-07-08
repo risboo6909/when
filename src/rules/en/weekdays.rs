@@ -1,7 +1,7 @@
 use super::combinators::{stub, tokenize_count_symbols, Dist};
 use super::errors::{ambiguous_time_error, SemanticError};
-use super::rules::{Context, RuleResult, TokenDesc};
 use super::tokens::{Priority, Token, Weekday as Day, When};
+use super::types::{Context, RuleResult, TokenDesc};
 use chrono::prelude::*;
 use time::Duration;
 
@@ -162,7 +162,7 @@ fn make_time<'a, 'b, Tz: TimeZone>(
 mod tests {
     use super::interpret;
     use crate::rules::errors::ambiguous_time_error;
-    use crate::rules::rules::MatchBounds;
+    use crate::rules::types::MatchBounds;
     use chrono::prelude::*;
 
     fn fixed_time() -> DateTime<Local> {

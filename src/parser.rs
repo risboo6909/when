@@ -1,14 +1,13 @@
 use crate::rules::errors::DateTimeError;
-use crate::rules::rules::{Context, MatchResult};
+use crate::rules::types::{Context, MatchResult};
 use chrono::offset::{TimeZone, Utc};
 use chrono::{DateTime, Datelike, NaiveDateTime, Timelike};
 
 type ParserType<'a, Tz> =
-    Fn(DateTime<Tz>, &'a str, bool) -> Vec<Result<MatchResult, DateTimeError>>;
+    Fn(DateTime<Tz>, &'a str, bool) -> Vec<Result<MatchResult, DateTimeError>> + 'a;
 
 pub struct Parser<'a, Tz: TimeZone + 'a> {
-    lang_parser:
-        Box<Fn(DateTime<Tz>, &'a str, bool) -> Vec<Result<MatchResult, DateTimeError>> + 'a>,
+    lang_parser: Box<ParserType<'a, Tz>>,
     exact_match: bool,
     max_dist: usize,
     tz: Tz,
