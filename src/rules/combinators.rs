@@ -134,13 +134,14 @@ macro_rules! combine {
 macro_rules! make_interpreter {
     ( positions = $n: expr ) => {
         use tuple::TupleElements;
-
         pub(crate) fn interpret<Tz: TimeZone>(
             input: &str,
             exact_match: bool,
             tz: DateTime<Tz>,
         ) -> Result<RuleResult, crate::rules::errors::SemanticError> {
             let mut res = RuleResult::new();
+
+            // parse is a function made from parser combinators, it is own for each rule
             match parse(CompleteStr(input), exact_match) {
                 Ok((tail, (skipped, tt))) => {
                     let bounds =
@@ -149,6 +150,7 @@ macro_rules! make_interpreter {
                     for idx in 0..$n {
                         res.set_token(tt.get(idx).unwrap());
                     }
+
                     res.set_tail(*tail);
                     match make_time(&res, tz, &input[bounds.start_idx..bounds.end_idx]) {
                         Ok(ctx) => res.set_context(ctx),
@@ -317,7 +319,7 @@ pub(crate) fn best_fit<'a>(
     wrap_error(input, crate::rules::errors::UNKNOWN)
 }
 
-pub(crate) fn remove_overlapped<'a>(
+fn handle_overlapped<'a>(
     source_str: &'a str,
     matched_tokens: &'a [Result<MatchResult, SemanticError<'a>>],
 ) -> Vec<Result<MatchResult, SemanticError<'a>>> {
@@ -325,12 +327,12 @@ pub(crate) fn remove_overlapped<'a>(
     let mut overlap: Option<MatchBounds> = None;
 
     let mut min_idx = 0;
-    let mut max_idx = None;
 
+    let mut max_idx = None;
     let mut prev_elem = None;
 
-    let mut f = |item: &'a Result<MatchResult, SemanticError>, start_idx, end_idx| {
-        if max_idx.map_or(false, |x| x >= start_idx) {
+    let mut helper = |item: &'a Result<MatchResult, SemanticError>, start_idx, end_idx| {
+        if max_idx.map_or(false, |max_idx| max_idx >= start_idx) {
             // maintain maximum position in text for overlapped interval
             overlap = match overlap {
                 None => Some(MatchBounds::new(min_idx, end_idx)),
@@ -345,32 +347,32 @@ pub(crate) fn remove_overlapped<'a>(
             result.push(prev_elem.take().unwrap());
         }
 
-        if max_idx.map_or(true, |x| end_idx > x) {
+        if max_idx.map_or(true, |max_idx| end_idx > max_idx) {
             min_idx = start_idx;
             max_idx = Some(end_idx);
-
             prev_elem = Some(item.clone());
         }
     };
 
-    // handle possible remaining items
     let mut last_item = None;
     for item in matched_tokens.iter() {
-        match item {
-            Ok(token) => f(&item, token.get_start_idx(), token.get_end_idx()),
-            Err(token) => f(&item, token.get_start_idx(), token.get_end_idx()),
-        }
+        let token = item.as_ref().unwrap();
+        helper(&item, token.get_start_idx(), token.get_end_idx());
         last_item = Some(item);
     }
 
-    if overlap.is_none() {
-        if last_item.is_some() {
-            result.push(last_item.unwrap().clone());
+    // handle possible remaining items
+    match overlap {
+        None => {
+            if last_item.is_some() {
+                result.push(last_item.unwrap().clone());
+            }
         }
-    } else {
-        result.push(Err(intersection_error(
-            &source_str[overlap.unwrap().start_idx..overlap.unwrap().end_idx],
-        )));
+        Some(overlap) => {
+            result.push(Err(intersection_error(
+                &source_str[overlap.start_idx..overlap.end_idx],
+            )));
+        }
     }
 
     result
@@ -440,8 +442,7 @@ pub(crate) fn apply_generic<'a, Tz: TimeZone + 'a>(
         Err(x) => x.get_start_idx(),
     });
 
-    // then look for tokens bounds intersections, and treat them as errors
-    let tmp = remove_overlapped(source_str, &matched_tokens);
+    let tmp = handle_overlapped(source_str, &matched_tokens);
 
     // unbox errors
     tmp.iter()
