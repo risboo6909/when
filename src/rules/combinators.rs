@@ -1,4 +1,4 @@
-use super::types::{FnRule, MatchBounds, MatchResult, MyResult, RuleResult, TokenDesc};
+use super::types::{FnRule, MatchBounds, MatchResult, MultiMatch, MyResult, RuleResult, TokenDesc};
 
 use core::borrow::BorrowMut;
 use nom::{
@@ -7,6 +7,7 @@ use nom::{
 };
 
 use chrono::{DateTime, TimeZone};
+use std::cmp;
 use strsim::damerau_levenshtein;
 
 pub use super::errors::{intersection_error, DateTimeError, SemanticError};
@@ -335,8 +336,14 @@ fn handle_overlapped<'a>(
         if max_idx.map_or(false, |max_idx| max_idx >= start_idx) {
             // maintain maximum position in text for overlapped interval
             overlap = match overlap {
+                // create new bounds
                 None => Some(MatchBounds::new(min_idx, end_idx)),
-                Some(bounds) => Some(MatchBounds::new(bounds.start_idx, end_idx)),
+                // wide up intersection bounds
+                Some(bounds) => Some(MatchBounds::new(
+                    bounds.start_idx,
+                    // max_ids guaranteed to be something at this point
+                    cmp::max(max_idx.unwrap(), end_idx),
+                )),
             };
         } else if overlap.is_some() {
             result.push(Err(intersection_error(
@@ -355,6 +362,8 @@ fn handle_overlapped<'a>(
     };
 
     let mut last_item = None;
+
+    // matched_tokens are sorted in ascending order by their start positions
     for item in matched_tokens.iter() {
         let token = item.as_ref().unwrap();
         helper(&item, token.get_start_idx(), token.get_end_idx());

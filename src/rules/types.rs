@@ -193,6 +193,16 @@ pub struct MatchResult {
     time_shift: Context,
 }
 
+#[derive(Debug, Clone)]
+pub struct MultiMatch {
+    results: Vec<MatchResult>,
+}
+
+enum MatchPoint {
+    MatchResult,
+    MultiMatch,
+}
+
 impl MatchResult {
     pub fn new(time_shift: Context, start_idx: usize, end_idx: usize) -> Self {
         Self {
