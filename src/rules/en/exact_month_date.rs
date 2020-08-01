@@ -40,7 +40,7 @@ define!(numeric_ord:
     [(Token::Ordinals(Ordinals::TwentySeventh), Priority(1)), "27th", Dist(0)] |
     [(Token::Ordinals(Ordinals::TwentyEighth), Priority(1)), "28th", Dist(0)] |
     [(Token::Ordinals(Ordinals::TwentyNinth), Priority(1)), "29th", Dist(0)] |
-    [(Token::Ordinals(Ordinals::Thirtieth), Priority(1)), "30nt", Dist(0)] |
+    [(Token::Ordinals(Ordinals::Thirtieth), Priority(1)), "30th", Dist(0)] |
     [(Token::Ordinals(Ordinals::ThirtiethFirst), Priority(1)), "31st", Dist(0)]
 );
 
@@ -148,7 +148,11 @@ define!(
     [(Token::Month(Month::February), Priority(5)), "february", Dist(1)] |
     [(Token::Month(Month::February), Priority(5)), "feb", Dist(0)]
 );
-define!(march: (Token::Month(Month::March), Priority(5)), "march", Dist(1));
+define!(
+    march: 
+    [(Token::Month(Month::March), Priority(5)), "march", Dist(1)] |
+    [(Token::Month(Month::March), Priority(5)), "mar", Dist(0)]
+);
 define!(
     april:
     [(Token::Month(Month::April), Priority(5)), "april", Dist(1)] |
