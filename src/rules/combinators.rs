@@ -296,7 +296,7 @@ pub(crate) fn recognize_word<'a>(
 pub(crate) fn best_fit<'a>(
     input: CompleteStr<'a>,
     exact_match: bool,
-    combinators: Vec<&Fn(CompleteStr<'a>, bool) -> MyResult<'a>>,
+    combinators: Vec<&dyn Fn(CompleteStr<'a>, bool) -> MyResult<'a>>,
 ) -> MyResult<'a> {
     let mut min_dist = Dist(std::usize::MAX);
 

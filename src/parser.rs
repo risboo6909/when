@@ -4,11 +4,11 @@ use chrono::offset::{TimeZone, Utc};
 use chrono::{DateTime, Datelike, NaiveDateTime, Timelike};
 
 type ParserType<'a, Tz> =
-    Fn(DateTime<Tz>, &'a str, bool) -> Vec<Result<MatchResult, DateTimeError>>;
+    &'a dyn Fn(DateTime<Tz>, &'a str, bool) -> Vec<Result<MatchResult, DateTimeError>>;
 
 pub struct Parser<'a, Tz: TimeZone + 'a> {
     lang_parser:
-        Box<Fn(DateTime<Tz>, &'a str, bool) -> Vec<Result<MatchResult, DateTimeError>> + 'a>,
+        Box<&'a dyn Fn(DateTime<Tz>, &'a str, bool) -> Vec<Result<MatchResult, DateTimeError>>>,
     exact_match: bool,
     max_dist: usize,
     tz: Tz,
@@ -17,7 +17,7 @@ pub struct Parser<'a, Tz: TimeZone + 'a> {
 impl<'a, Tz: TimeZone + 'a> Parser<'a, Tz> {
     pub fn new(tz: Tz) -> Self {
         Parser {
-            lang_parser: Box::new(super::en),
+            lang_parser: Box::new(&super::en),
             exact_match: false,
             max_dist: 5,
             tz,
