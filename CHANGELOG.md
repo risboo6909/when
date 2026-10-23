@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.0 (unreleased)
+## 0.2.0 (2026-10-23)
 
 - Move to Rust edition 2024, requiring Rust 1.85 or newer.
 - Migrate from Nom 4 macros and `CompleteStr` to Nom 8 function combinators and `&str`.
