@@ -307,3 +307,109 @@ fn test_invalid_clock_components_return_errors() {
         );
     }
 }
+
+#[test]
+fn test_hour_without_minutes() {
+    for fuzzy in [false, true] {
+        for (input, hour) in [
+            ("0", 0),
+            ("15", 15),
+            ("20", 20),
+            ("23", 23),
+            ("07", 7),
+            (" 20 \n", 20),
+        ] {
+            let parser = Parser::new(chrono_tz::UTC).fuzzy_parse(fuzzy);
+            let expected = chrono_tz::UTC
+                .with_ymd_and_hms(2018, 8, 3, hour, 0, 0)
+                .unwrap();
+            assert_eq!(
+                parser.parse_fixed_time(fixed_time(), input),
+                vec![Ok(expected)],
+                "{input:?}"
+            );
+        }
+    }
+}
+
+#[test]
+fn test_hour_without_minutes_preserves_local_date() {
+    for (timezone, now, expected) in [
+        (
+            chrono_tz::Europe::Moscow,
+            "2018-08-03T23:34:56.123456789",
+            "2018-08-04T20:00:00",
+        ),
+        (
+            chrono_tz::America::Los_Angeles,
+            "2018-08-03T01:34:56.123456789",
+            "2018-08-02T20:00:00",
+        ),
+    ] {
+        let parser = Parser::new(timezone);
+        let expected = timezone
+            .from_local_datetime(&NaiveDateTime::from_str(expected).unwrap())
+            .unwrap();
+        assert_eq!(
+            parser.parse_fixed_time(NaiveDateTime::from_str(now).unwrap(), "20"),
+            vec![Ok(expected)]
+        );
+    }
+}
+
+#[test]
+fn test_hour_without_minutes_rejects_invalid_values() {
+    let parser = Parser::new(chrono_tz::UTC);
+    for (input, value) in [
+        ("24", 24),
+        ("99", 99),
+        (" 24 ", 24),
+        ("2147483647", i32::MAX),
+    ] {
+        assert_eq!(
+            parser.parse_fixed_time(fixed_time(), input),
+            vec![Err(when::DateTimeError::InvalidTime {
+                text: input.trim().to_owned(),
+                what: "hours".to_owned(),
+                value,
+            })],
+            "{input:?}"
+        );
+    }
+}
+
+#[test]
+fn test_hour_only_fallback_keeps_structured_rules() {
+    for (input, expected) in [
+        ("20:30", "2018-08-03T20:30:00"),
+        ("20/12/2010", "2010-12-20T15:34:00"),
+        ("20 december", "2018-12-20T15:34:00"),
+        ("in 20 seconds", "2018-08-03T15:35:16"),
+        ("20 seconds ago", "2018-08-03T15:34:36"),
+    ] {
+        assert_date_time(
+            Parser::new(chrono_tz::Europe::Moscow),
+            input,
+            &[expected],
+            1,
+        );
+    }
+    let parser = Parser::new(chrono_tz::UTC).fuzzy_parse(false);
+    for input in [
+        "",
+        " ",
+        "-1",
+        "+15",
+        "15.0",
+        "15x",
+        "20 people",
+        "call me at 20",
+        "２０",
+        "2147483648",
+    ] {
+        assert!(
+            parser.parse_fixed_time(fixed_time(), input).is_empty(),
+            "{input:?}"
+        );
+    }
+}

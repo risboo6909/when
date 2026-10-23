@@ -13,6 +13,7 @@ Check out how it works interactively at https://risboo6909.org/when/ or at https
 * the deadline is **next tuesday 14:00**
 * drop me a line **next wednesday at 2:25 p.m**
 * it could be done at **11 am past tuesday**
+* **20** (standalone hour, interpreted as 20:00 on the reference date)
 
 As a demonstration, check out a simple HTTP web [server](https://github.com/risboo6909/when-http) which parses natural language date/time using this library.
 

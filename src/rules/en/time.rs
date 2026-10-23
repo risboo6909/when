@@ -1,6 +1,6 @@
 use super::combinators::{Dist, stub, tokenize_count_symbols};
-use super::errors::{SemanticError, invalid_time_error};
-use super::rules::{Context, RuleResult, TokenDesc};
+use super::errors::{DateTimeError, SemanticError, invalid_time_error};
+use super::rules::{Context, MatchResult, RuleResult, TokenDesc};
 use super::tokens::{AmPm, Priority, Token};
 use chrono::prelude::*;
 use nom::{Parser, branch::alt, multi::many_till};
@@ -55,6 +55,27 @@ fn parse(input: &str, exact_match: bool) -> nom::IResult<&str, (Vec<usize>, [Tok
 }
 
 make_interpreter!();
+
+/// Recognize a standalone hour only after structured rules found no matches.
+pub(super) fn interpret_hour_only<Tz: TimeZone>(
+    input: &str,
+    tz_aware: DateTime<Tz>,
+) -> Option<Result<MatchResult, DateTimeError>> {
+    let trimmed = input.trim();
+    if trimmed.is_empty() || !trimmed.bytes().all(|byte| byte.is_ascii_digit()) {
+        return None;
+    }
+
+    let (_, hour) = hours(trimmed).ok()?;
+    let mut res = RuleResult::new();
+    res.set_token(&hour);
+    let start = input.len() - input.trim_start().len();
+    Some(
+        make_time(&res, tz_aware, trimmed)
+            .map(|ctx| MatchResult::new(ctx, start, start + trimmed.len()))
+            .map_err(|error| error.extract_error()),
+    )
+}
 
 fn make_time<'a, 'b, Tz: TimeZone>(
     res: &'a RuleResult,

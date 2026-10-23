@@ -20,8 +20,8 @@ pub fn parse<'a, Tz: TimeZone + 'a>(
     exact_match: bool,
 ) -> Vec<Result<rules::MatchResult, errors::DateTimeError>> {
     let input_lowered = input.to_lowercase();
-    combinators::apply_generic(
-        tz_aware,
+    let mut matches = combinators::apply_generic(
+        tz_aware.clone(),
         &input_lowered,
         &[
             weekdays::interpret::<Tz>,
@@ -33,5 +33,11 @@ pub fn parse<'a, Tz: TimeZone + 'a>(
             common::slash_dmy::interpret::<Tz>,
         ],
         exact_match,
-    )
+    );
+    if matches.is_empty() {
+        if let Some(hour) = time::interpret_hour_only(&input_lowered, tz_aware) {
+            matches.push(hour);
+        }
+    }
+    matches
 }

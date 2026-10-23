@@ -13,6 +13,7 @@
 - Correct 12 AM to midnight and 12 PM to noon, including dotted suffixes.
 - Build complete dates and times atomically to avoid panics at month and year boundaries.
 - Return errors for invalid dates and timezone gaps/folds; preserve exact instants for relative durations.
+- Recognize standalone hours (`0` through `23`) as `HH:00`, preserving the local reference date (issue #1).
 
 ### Migration
 
