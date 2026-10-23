@@ -1,7 +1,7 @@
 use crate::rules::errors::DateTimeError;
 use crate::rules::rules::{Context, MatchResult};
 use chrono::offset::{TimeZone, Utc};
-use chrono::{DateTime, Datelike, NaiveDateTime, Timelike};
+use chrono::{DateTime, Datelike, LocalResult, NaiveDate, NaiveDateTime, Timelike};
 
 type ParserType<'a, Tz> =
     &'a dyn Fn(DateTime<Tz>, &'a str, bool) -> Vec<Result<MatchResult, DateTimeError>>;
@@ -59,7 +59,7 @@ impl<'a, Tz: TimeZone + 'a> Parser<'a, Tz> {
     // convert date/time to chrono
     pub fn parse(&self, input: &'a str) -> Vec<Result<DateTime<Tz>, DateTimeError>> {
         let (tz_aware, merged) = self.parser_helper(Utc::now().naive_utc(), input);
-        self.to_chrono(tz_aware, merged)
+        self.to_chrono(tz_aware, merged, input)
     }
 
     // convert date/time to chrono
@@ -69,7 +69,7 @@ impl<'a, Tz: TimeZone + 'a> Parser<'a, Tz> {
         input: &'a str,
     ) -> Vec<Result<DateTime<Tz>, DateTimeError>> {
         let (tz_aware, merged) = self.parser_helper(now, input);
-        self.to_chrono(tz_aware, merged)
+        self.to_chrono(tz_aware, merged, input)
     }
 
     fn merge_group(&self, group: &[&MatchResult]) -> Context {
@@ -122,45 +122,81 @@ impl<'a, Tz: TimeZone + 'a> Parser<'a, Tz> {
         &self,
         date_time: DateTime<Tz>,
         merged: Vec<Result<Context, DateTimeError>>,
+        input: &str,
     ) -> Vec<Result<DateTime<Tz>, DateTimeError>> {
-        let mut ready: Vec<Result<DateTime<Tz>, DateTimeError>> = Vec::new();
+        merged
+            .into_iter()
+            .map(|ctx| ctx.and_then(|ctx| self.apply_context(&date_time, ctx, input)))
+            .collect()
+    }
 
-        for ctx in merged {
-            if ctx.is_err() {
-                ready.push(Err(ctx.unwrap_err()));
-                continue;
-            }
+    fn apply_context(
+        &self,
+        date_time: &DateTime<Tz>,
+        ctx: Context,
+        input: &str,
+    ) -> Result<DateTime<Tz>, DateTimeError> {
+        let invalid = |what: &str, value| DateTimeError::InvalidTime {
+            text: input.to_owned(),
+            what: what.to_owned(),
+            value,
+        };
+        let out_of_range = || DateTimeError::AmbiguousTime {
+            msg: format!("{input} (outside the supported date/time range)"),
+        };
+        let shifted = date_time
+            .clone()
+            .checked_add_signed(ctx.duration)
+            .ok_or_else(out_of_range)?;
+        let year = ctx.year.unwrap_or(shifted.year());
+        let month = ctx.month.unwrap_or(shifted.month() as i32);
+        let day = ctx.day.unwrap_or(shifted.day() as i32);
+        let hour = ctx.hour.unwrap_or(shifted.hour() as i32);
+        let minute = ctx.minute.unwrap_or(shifted.minute() as i32);
+        let second = if ctx.duration.num_seconds() % 60 == 0 {
+            0
+        } else {
+            shifted.second()
+        };
 
-            let ctx = ctx.unwrap();
-
-            let mut tz_aware = date_time.clone();
-
-            tz_aware = tz_aware + ctx.duration;
-
-            if ctx.duration.num_seconds() % 60 == 0 {
-                tz_aware = tz_aware.with_second(0).unwrap();
-            }
-
-            if ctx.year.is_some() {
-                tz_aware = tz_aware.with_year(ctx.year.unwrap()).unwrap();
-            }
-            if ctx.month.is_some() {
-                tz_aware = tz_aware.with_month(ctx.month.unwrap() as u32).unwrap();
-            }
-            if ctx.day.is_some() {
-                tz_aware = tz_aware.with_day(ctx.day.unwrap() as u32).unwrap();
-            }
-            if ctx.hour.is_some() {
-                tz_aware = tz_aware.with_hour(ctx.hour.unwrap() as u32).unwrap();
-            }
-            if ctx.minute.is_some() {
-                tz_aware = tz_aware.with_minute(ctx.minute.unwrap() as u32).unwrap();
-            }
-
-            tz_aware = tz_aware.with_nanosecond(0).unwrap();
-
-            ready.push(Ok(tz_aware));
+        if NaiveDate::from_ymd_opt(year, 1, 1).is_none() {
+            return Err(invalid("year", year));
         }
-        ready
+        if !(1..=12).contains(&month) {
+            return Err(invalid("month", month));
+        }
+        // Construct the final calendar date, avoiding invalid intermediate dates
+        // such as January 31 -> February 31 -> February 1.
+        let date = NaiveDate::from_ymd_opt(year, month as u32, day as u32)
+            .ok_or_else(|| invalid("day", day))?;
+        if !(0..=23).contains(&hour) {
+            return Err(invalid("hours", hour));
+        }
+        let local = date
+            .and_hms_opt(hour as u32, minute as u32, second)
+            .ok_or_else(|| invalid("minutes", minute))?;
+
+        if ctx.year.is_none()
+            && ctx.month.is_none()
+            && ctx.day.is_none()
+            && ctx.hour.is_none()
+            && ctx.minute.is_none()
+        {
+            // A duration already identifies an instant, even during a clock fold.
+            // Only remove sub-minute precision here; do not reinterpret the clock.
+            let rounding = local - shifted.naive_local();
+            return shifted
+                .checked_add_signed(rounding)
+                .ok_or_else(out_of_range);
+        }
+
+        // Resolve the timezone after applying both the date and the clock time.
+        match self.tz.from_local_datetime(&local) {
+            LocalResult::Single(value) => Ok(value),
+            LocalResult::Ambiguous(_, _) => Err(DateTimeError::AmbiguousTime {
+                msg: input.to_owned(),
+            }),
+            LocalResult::None => Err(invalid("local hours", hour)),
+        }
     }
 }

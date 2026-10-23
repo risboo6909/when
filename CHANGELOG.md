@@ -10,6 +10,9 @@
 - Replace deprecated Chrono constructors in tests and use UTC fixtures.
 - Track Cargo.lock for reproducible development builds and CI.
 - Replace Travis CI with GitHub Actions checks for Rust 1.85, stable Rust and formatting.
+- Correct 12 AM to midnight and 12 PM to noon, including dotted suffixes.
+- Build complete dates and times atomically to avoid panics at month and year boundaries.
+- Return errors for invalid dates and timezone gaps/folds; preserve exact instants for relative durations.
 
 ### Migration
 

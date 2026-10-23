@@ -178,3 +178,132 @@ fn test_explicit_language_parser() {
     let parser = Parser::new(chrono_tz::UTC).parser(Box::new(&when::en));
     assert_date_time(parser, "in 20 seconds", &["2018-08-03T12:35:16"], 1);
 }
+
+#[test]
+fn test_noon_and_midnight_spellings() {
+    for (suffix, expected_hour) in [
+        ("am", 0),
+        ("a.m.", 0),
+        ("a.m", 0),
+        ("am.", 0),
+        ("a.", 0),
+        ("a", 0),
+        ("pm", 12),
+        ("p.m.", 12),
+        ("p.m", 12),
+        ("pm.", 12),
+        ("p.", 12),
+        ("p", 12),
+        ("AM", 0),
+        ("P.M.", 12),
+    ] {
+        for exact_match in [false, true] {
+            for minute in [0, 30] {
+                let input = format!("12:{minute:02} {suffix}");
+                let parser = Parser::new(chrono_tz::UTC).fuzzy_parse(!exact_match);
+                let expected = chrono_tz::UTC
+                    .with_ymd_and_hms(2018, 8, 3, expected_hour, minute, 0)
+                    .unwrap();
+                assert_eq!(
+                    parser.parse_fixed_time(fixed_time(), &input),
+                    vec![Ok(expected)],
+                    "{input}"
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn test_complete_date_is_built_atomically() {
+    for (now, input, expected) in [
+        ("2026-01-31T12:34:56", "1 february", "2026-02-01T12:34:00"),
+        ("2026-01-31T12:34:56", "1/2/2026", "2026-02-01T12:34:00"),
+        ("2026-03-31T12:34:56", "30 april", "2026-04-30T12:34:00"),
+        ("2024-02-29T12:34:56", "1/3/2023", "2023-03-01T12:34:00"),
+        ("2023-01-31T12:34:56", "29/2/2024", "2024-02-29T12:34:00"),
+    ] {
+        let parser = Parser::new(chrono_tz::UTC);
+        let expected =
+            chrono_tz::UTC.from_utc_datetime(&NaiveDateTime::from_str(expected).unwrap());
+        assert_eq!(
+            parser.parse_fixed_time(NaiveDateTime::from_str(now).unwrap(), input),
+            vec![Ok(expected)],
+            "{now}: {input}"
+        );
+    }
+}
+
+#[test]
+fn test_invalid_final_date_returns_error() {
+    let parser = Parser::new(chrono_tz::UTC);
+    for (now, input) in [
+        ("2026-01-31T12:34:56", "in 1 month"),
+        ("2024-02-29T12:34:56", "in 1 year"),
+        ("2026-01-31T12:34:56", "31/2/2026"),
+        ("2026-01-31T12:34:56", "1/2/2147483647"),
+    ] {
+        let results = parser.parse_fixed_time(NaiveDateTime::from_str(now).unwrap(), input);
+        assert_eq!(results.len(), 1, "{input}");
+        assert!(
+            matches!(results[0], Err(when::DateTimeError::InvalidTime { .. })),
+            "{input}: {results:?}"
+        );
+    }
+}
+
+#[test]
+fn test_date_and_time_are_resolved_together_in_timezone() {
+    let parser = Parser::new(chrono_tz::Europe::Amsterdam);
+    let now = NaiveDateTime::from_str("2026-01-31T01:30:56").unwrap();
+    let input = "3:30 at 29/3/2026";
+    let expected = chrono_tz::Europe::Amsterdam
+        .with_ymd_and_hms(2026, 3, 29, 3, 30, 0)
+        .unwrap();
+    assert_eq!(parser.parse_fixed_time(now, input), vec![Ok(expected)]);
+}
+
+#[test]
+fn test_timezone_gap_and_fold_return_errors() {
+    let parser = Parser::new(chrono_tz::Europe::Amsterdam);
+    for input in ["2:30 at 29/3/2026", "2:30 at 25/10/2026"] {
+        let results = parser.parse_fixed_time(fixed_time(), input);
+        assert_eq!(results.len(), 1, "{input}");
+        assert!(results[0].is_err(), "{input}");
+    }
+}
+
+#[test]
+fn test_relative_time_preserves_instant_during_clock_fold() {
+    for (now, input, expected) in [
+        ("2026-10-25T00:30:56", "in 1 hour", "2026-10-25T01:30:00"),
+        (
+            "2026-10-25T00:59:56",
+            "in 20 seconds",
+            "2026-10-25T01:00:16",
+        ),
+    ] {
+        let parser = Parser::new(chrono_tz::Europe::Amsterdam);
+        let expected = chrono_tz::UTC
+            .from_utc_datetime(&NaiveDateTime::from_str(expected).unwrap())
+            .with_timezone(&chrono_tz::Europe::Amsterdam);
+        assert_eq!(
+            parser.parse_fixed_time(NaiveDateTime::from_str(now).unwrap(), input),
+            vec![Ok(expected)],
+            "{now}: {input}"
+        );
+    }
+}
+
+#[test]
+fn test_invalid_clock_components_return_errors() {
+    let parser = Parser::new(chrono_tz::UTC);
+    for input in ["24pm", "25am", "-1pm", "-1:30", "12:-1"] {
+        let results = parser.parse_fixed_time(fixed_time(), input);
+        assert_eq!(results.len(), 1, "{input}");
+        assert!(
+            matches!(results[0], Err(when::DateTimeError::InvalidTime { .. })),
+            "{input}: {results:?}"
+        );
+    }
+}

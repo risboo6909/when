@@ -24,9 +24,9 @@ define!(
 
 define!(
     pm:
-    [(Token::AmPm(AmPm::Am), Priority(3)), "p.m.", Dist(0)] |
-    [(Token::AmPm(AmPm::Am), Priority(3)), "p.m", Dist(0)] |
-    [(Token::AmPm(AmPm::Am), Priority(3)), "pm.", Dist(0)] |
+    [(Token::AmPm(AmPm::Pm), Priority(3)), "p.m.", Dist(0)] |
+    [(Token::AmPm(AmPm::Pm), Priority(3)), "p.m", Dist(0)] |
+    [(Token::AmPm(AmPm::Pm), Priority(3)), "pm.", Dist(0)] |
     [(Token::AmPm(AmPm::Pm), Priority(3)), "pm", Dist(0)] |
     [(Token::AmPm(AmPm::Pm), Priority(3)), "p.", Dist(0)] |
     [(Token::AmPm(AmPm::Pm), Priority(3)), "p", Dist(0)]
@@ -66,31 +66,28 @@ fn make_time<'a, 'b, Tz: TimeZone>(
 
     let token = res.token_by_priority(Priority(0));
     if let Some(Token::Number(n)) = token {
-        hrs = n as i32;
+        hrs = n;
+    }
+    if !(0..=23).contains(&hrs) {
+        return Err(invalid_time_error(input, "hours", hrs));
     }
 
     let token = res.token_by_priority(Priority(2));
     if let Some(Token::Number(minutes)) = token {
-        if minutes > 59 {
+        if !(0..=59).contains(&minutes) {
             return Err(invalid_time_error(input, "minutes", minutes));
         }
 
-        if hrs <= 23 {
-            ctx.minute = Some(minutes);
-        } else {
-            return Err(invalid_time_error(input, "hours", hrs));
-        }
+        ctx.minute = Some(minutes);
     } else {
         ctx.minute = Some(0);
     }
 
-    let token = res.token_by_priority(Priority(3));
-    if let Some(Token::AmPm(AmPm::Pm)) = token {
-        if hrs <= 12 {
-            // TODO: Ensure correctness
-            hrs = (hrs + 12) % 24;
-        }
-    }
+    hrs = match res.token_by_priority(Priority(3)) {
+        Some(Token::AmPm(AmPm::Am)) if hrs == 12 => 0,
+        Some(Token::AmPm(AmPm::Pm)) if hrs < 12 => hrs + 12,
+        _ => hrs,
+    };
 
     ctx.hour = Some(hrs);
 
@@ -121,7 +118,7 @@ mod tests {
         let result = interpret("at 12 p.", false, fixed_time()).unwrap();
         assert_eq!(result.bounds, Some(MatchBounds::new(3, 8)));
 
-        assert_eq!(result.get_hours(), 0);
+        assert_eq!(result.get_hours(), 12);
         let result = interpret("at 11p.m.", false, fixed_time()).unwrap();
         assert_eq!(result.bounds, Some(MatchBounds::new(3, 9)));
         assert_eq!(result.get_hours(), 23);
@@ -139,7 +136,7 @@ mod tests {
 
         let result = interpret("at 12 a.", false, fixed_time()).unwrap();
         assert_eq!(result.bounds, Some(MatchBounds::new(3, 8)));
-        assert_eq!(result.get_hours(), 12);
+        assert_eq!(result.get_hours(), 0);
     }
 
     #[test]
