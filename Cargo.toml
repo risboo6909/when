@@ -1,23 +1,17 @@
 [package]
 name = "when"
-version = "0.1.4"
+version = "0.2.0"
 authors = ["Boris Tatarintsev <ttyv00@gmail.com>"]
-edition = "2018"
+edition = "2024"
+rust-version = "1.85"
 description = "'When' parses natural language date/time and produces computer friendly output structures"
 documentation = "https://github.com/risboo6909/when"
 repository = "https://github.com/risboo6909/when"
 license = "MIT"
-license-file = "LICENSE"
-
-[dependencies.nom]
-version = "4.2"
 
 [dependencies]
-chrono = "0.4"
-chrono-tz = "0.4"
-strsim = "0.8.0"
-time = "0.1"
-tuple = "0.4"
-failure = "0.1"
-num-traits = "0.2.6"
-serde = { version = "1.0.91", features = ["derive"] }
+chrono = "0.4.45"
+chrono-tz = "0.10.4"
+nom = "8.0"
+strsim = "0.11.1"
+serde = { version = "1.0", features = ["derive"] }

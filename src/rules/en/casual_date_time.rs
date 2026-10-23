@@ -1,11 +1,11 @@
-use super::combinators::{stub, tokenize_count_symbols, Dist};
+use super::combinators::{Dist, stub, tokenize_count_symbols};
 use super::consts;
 use super::errors::SemanticError;
 use super::rules::{Context, RuleResult, TokenDesc};
 use super::tokens::{Priority, Pronouns, TimeOfDay, Token, When};
 use chrono::prelude::*;
 
-use nom::{alt, apply, call, many_till, named_args, tuple, types::CompleteStr};
+use nom::{Parser, branch::alt, multi::many_till};
 
 define!(now: (Token::When(When::Now), Priority(0)), "now", Dist(0));
 
@@ -35,25 +35,33 @@ define!(afternoon: (Token::TimeOfDay(TimeOfDay::Afternoon), Priority(2)), "after
 
 combine!(time_of_day => night | morning | evening | noon | afternoon);
 
-named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<usize>,
-                             ( TokenDesc, TokenDesc, ) )>,
-    many_till!(tokenize_count_symbols,
-        alt!(
+fn parse(input: &str, exact_match: bool) -> nom::IResult<&str, (Vec<usize>, [TokenDesc; 2])> {
+    many_till(
+        tokenize_count_symbols,
+        alt((
             // last night, this morning, etc.
-            tuple!(apply!(adj, exact_match), apply!(time_of_day, exact_match)) |
+            (
+                |input| adj(input, exact_match),
+                |input| time_of_day(input, exact_match),
+            ),
             // tomorrow evening, today morning, etc.
-            tuple!(apply!(when, exact_match), apply!(time_of_day, exact_match)) |
+            (
+                |input| when(input, exact_match),
+                |input| time_of_day(input, exact_match),
+            ),
             // today, tomorrow, yesterday, etc.
-            tuple!(apply!(when, exact_match), stub) |
+            (|input| when(input, exact_match), stub),
             // now
-            tuple!(apply!(now, exact_match), stub) |
+            (|input| now(input, exact_match), stub),
             // night, morning, evening, etc
-            tuple!(apply!(time_of_day, exact_match), stub)
-        )
+            (|input| time_of_day(input, exact_match), stub),
+        )),
     )
-);
+    .map(|(skipped, (t0, t1))| (skipped, [t0, t1]))
+    .parse(input)
+}
 
-make_interpreter!(positions = 2);
+make_interpreter!();
 
 fn make_time<'a, 'b, Tz: TimeZone>(
     res: &'a RuleResult,
@@ -123,8 +131,8 @@ mod tests {
     use crate::rules::rules::MatchBounds;
     use chrono::prelude::*;
 
-    fn fixed_time() -> DateTime<Local> {
-        Local.ymd(2019, 1, 1).and_hms(0, 0, 0)
+    fn fixed_time() -> DateTime<Utc> {
+        Utc.with_ymd_and_hms(2019, 1, 1, 0, 0, 0).unwrap()
     }
 
     #[test]

@@ -1,9 +1,9 @@
-use super::combinators::{stub, tokenize_count_symbols, Dist};
-use super::errors::{invalid_time_error, SemanticError};
+use super::combinators::{Dist, stub, tokenize_count_symbols};
+use super::errors::{SemanticError, invalid_time_error};
 use super::rules::{Context, RuleResult, TokenDesc};
 use super::tokens::{AmPm, Priority, Token};
 use chrono::prelude::*;
-use nom::{alt, apply, call, many_till, named_args, tuple, types::CompleteStr};
+use nom::{Parser, branch::alt, multi::many_till};
 
 define_num!(hours: (Token::Number, Priority(0)));
 
@@ -34,25 +34,27 @@ define!(
 
 combine!(am_pm => am | pm);
 
-named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<usize>,
-                             ( TokenDesc, TokenDesc, TokenDesc, TokenDesc ) )>,
-    many_till!(tokenize_count_symbols,
-        alt!(
+fn parse(input: &str, exact_match: bool) -> nom::IResult<&str, (Vec<usize>, [TokenDesc; 4])> {
+    many_till(
+        tokenize_count_symbols,
+        alt((
             // hours:minutes am/pm, for example 5:30am, 4:44pm, etc.
-            tuple!(hours, colon, minutes, apply!(am_pm, exact_match)) |
+            (hours, colon, minutes, |input| am_pm(input, exact_match)),
             // hours:minutes am/pm, for example 5-30am, 4-44pm, etc.
-            tuple!(hours, dash, minutes, apply!(am_pm, exact_match)) |
+            (hours, dash, minutes, |input| am_pm(input, exact_match)),
             // hours:minutes, for example 5:30, 4:44, etc.
-            tuple!(hours, colon, minutes, stub) |
+            (hours, colon, minutes, stub),
             // hours-minutes, for example 5-30, 4-44, etc.
-            tuple!(hours, dash, minutes, stub) |
+            (hours, dash, minutes, stub),
             // hours, for example 5am, 6p.m., 4a., 3 p.m.
-            tuple!(hours, apply!(am_pm, exact_match), stub, stub)
-        )
+            (hours, |input| am_pm(input, exact_match), stub, stub),
+        )),
     )
-);
+    .map(|(skipped, (t0, t1, t2, t3))| (skipped, [t0, t1, t2, t3]))
+    .parse(input)
+}
 
-make_interpreter!(positions = 4);
+make_interpreter!();
 
 fn make_time<'a, 'b, Tz: TimeZone>(
     res: &'a RuleResult,
@@ -102,8 +104,8 @@ mod tests {
     use crate::rules::rules::MatchBounds;
     use chrono::prelude::*;
 
-    fn fixed_time() -> DateTime<Local> {
-        Local.ymd(2019, 1, 1).and_hms(0, 0, 0)
+    fn fixed_time() -> DateTime<Utc> {
+        Utc.with_ymd_and_hms(2019, 1, 1, 0, 0, 0).unwrap()
     }
 
     #[test]
@@ -182,5 +184,4 @@ mod tests {
             invalid_time_error("12:60", "minutes", 60).extract_error()
         );
     }
-
 }

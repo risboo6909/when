@@ -1,12 +1,12 @@
-use super::combinators::{stub, tokenize_count_symbols, Dist};
-use super::common::{is_leap_year, DAYS_IN_MONTH};
+use super::combinators::{Dist, stub, tokenize_count_symbols};
+use super::common::{DAYS_IN_MONTH, is_leap_year};
 use super::common_matchers::match_ordinal;
-use super::errors::{invalid_time_error, SemanticError};
+use super::errors::{SemanticError, invalid_time_error};
 use super::rules::{Context, RuleResult, TokenDesc};
 use super::tokens::{Month, Ordinals, Prepositions, Priority, Token};
 use chrono::prelude::*;
 
-use nom::{alt, apply, call, many_till, named_args, tuple, types::CompleteStr};
+use nom::{Parser, branch::alt, multi::many_till};
 
 define_num!(day_num: (Token::Number, Priority(0)));
 
@@ -149,7 +149,7 @@ define!(
     [(Token::Month(Month::February), Priority(5)), "feb", Dist(0)]
 );
 define!(
-    march: 
+    march:
     [(Token::Month(Month::March), Priority(5)), "march", Dist(1)] |
     [(Token::Month(Month::March), Priority(5)), "mar", Dist(0)]
 );
@@ -191,58 +191,100 @@ define!(december:
 combine!(month => january | february | march | april | may | june | july | august | september |
                   october | november | december);
 
-named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<usize>,
-                             ( TokenDesc, TokenDesc, TokenDesc, TokenDesc ) )>,
-
-    many_till!(tokenize_count_symbols,
-        alt!(
+fn parse(input: &str, exact_match: bool) -> nom::IResult<&str, (Vec<usize>, [TokenDesc; 4])> {
+    many_till(
+        tokenize_count_symbols,
+        alt((
             // 31th of february, 1st of january
-            tuple!(apply!(numeric_ord, exact_match), apply!(of, exact_match), apply!(month, exact_match),
-                   stub) |
-
+            (
+                |input| numeric_ord(input, exact_match),
+                |input| of(input, exact_match),
+                |input| month(input, exact_match),
+                stub,
+            ),
             // 31th december, 1st january
-            tuple!(apply!(numeric_ord, exact_match), apply!(month, exact_match), stub, stub) |
+            (
+                |input| numeric_ord(input, exact_match),
+                |input| month(input, exact_match),
+                stub,
+                stub,
+            ),
             // february 21th, january 1st
-            tuple!(apply!(month, exact_match), apply!(numeric_ord, exact_match), stub, stub) |
-
+            (
+                |input| month(input, exact_match),
+                |input| numeric_ord(input, exact_match),
+                stub,
+                stub,
+            ),
             // twentieth first of december (from 20 to 31 inclusive)
-            tuple!(apply!(tens, exact_match), apply!(ordinal, exact_match), apply!(of, exact_match),
-                   apply!(month, exact_match)) |
+            (
+                |input| tens(input, exact_match),
+                |input| ordinal(input, exact_match),
+                |input| of(input, exact_match),
+                |input| month(input, exact_match),
+            ),
             // eighteenth of december (from 1 to 19 inclusive)
-            tuple!(apply!(ordinal, exact_match), apply!(of, exact_match), apply!(month, exact_match),
-                   stub) |
-
+            (
+                |input| ordinal(input, exact_match),
+                |input| of(input, exact_match),
+                |input| month(input, exact_match),
+                stub,
+            ),
             // december of twentieth first (from 20 to 31 inclusive)
-            tuple!(apply!(month, exact_match), apply!(of, exact_match), apply!(tens, exact_match),
-                   apply!(ordinal, exact_match)) |
+            (
+                |input| month(input, exact_match),
+                |input| of(input, exact_match),
+                |input| tens(input, exact_match),
+                |input| ordinal(input, exact_match),
+            ),
             // december of eighteenth (from 1 to 19 inclusive)
-            tuple!(apply!(month, exact_match), apply!(of, exact_match), apply!(ordinal, exact_match),
-                   stub) |
-
+            (
+                |input| month(input, exact_match),
+                |input| of(input, exact_match),
+                |input| ordinal(input, exact_match),
+                stub,
+            ),
             // twentieth first december (from 20 to 31 inclusive)
-            tuple!(apply!(tens, exact_match), apply!(ordinal, exact_match), apply!(month, exact_match),
-                   stub) |
+            (
+                |input| tens(input, exact_match),
+                |input| ordinal(input, exact_match),
+                |input| month(input, exact_match),
+                stub,
+            ),
             // eighteenth december (from 1 to 19 inclusive)
-            tuple!(apply!(ordinal, exact_match), apply!(month, exact_match), stub, stub) |
-
+            (
+                |input| ordinal(input, exact_match),
+                |input| month(input, exact_match),
+                stub,
+                stub,
+            ),
             // december twentieth first (from 20 to 31 inclusive)
-            tuple!(apply!(month, exact_match), apply!(tens, exact_match), apply!(ordinal, exact_match),
-                   stub) |
+            (
+                |input| month(input, exact_match),
+                |input| tens(input, exact_match),
+                |input| ordinal(input, exact_match),
+                stub,
+            ),
             // december eighteenth  (from 1 to 19 inclusive)
-            tuple!(apply!(month, exact_match), apply!(ordinal, exact_match), stub, stub) |
-
+            (
+                |input| month(input, exact_match),
+                |input| ordinal(input, exact_match),
+                stub,
+                stub,
+            ),
             // 4 march
-            tuple!(day_num, apply!(month, exact_match), stub, stub) |
+            (day_num, |input| month(input, exact_match), stub, stub),
             // march 4
-            tuple!(apply!(month, exact_match), day_num, stub, stub) |
-
-            // january, december 
-            tuple!(apply!(month, exact_match), stub, stub, stub)
-        )
+            (|input| month(input, exact_match), day_num, stub, stub),
+            // january, december
+            (|input| month(input, exact_match), stub, stub, stub),
+        )),
     )
-);
+    .map(|(skipped, (t0, t1, t2, t3))| (skipped, [t0, t1, t2, t3]))
+    .parse(input)
+}
 
-make_interpreter!(positions = 4);
+make_interpreter!();
 
 fn make_time<'a, 'b, Tz: TimeZone>(
     res: &'a RuleResult,
@@ -346,8 +388,8 @@ mod tests {
     use crate::rules::errors::invalid_time_error;
     use chrono::prelude::*;
 
-    fn fixed_time() -> DateTime<Local> {
-        Local.ymd(2019, 1, 1).and_hms(0, 0, 0)
+    fn fixed_time() -> DateTime<Utc> {
+        Utc.with_ymd_and_hms(2019, 1, 1, 0, 0, 0).unwrap()
     }
 
     #[test]
@@ -401,5 +443,4 @@ mod tests {
         assert_eq!(result.get_day(), 4);
         assert_eq!(result.get_month(), 2);
     }
-
 }

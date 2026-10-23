@@ -1,14 +1,14 @@
-use super::combinators::{stub, tokenize_count_symbols, Dist};
+use super::combinators::{Dist, stub, tokenize_count_symbols};
 use super::common_matchers::match_num;
 use super::consts;
-use super::errors::{invalid_time_error, SemanticError};
+use super::errors::{SemanticError, invalid_time_error};
 use super::rules::{Context, RuleResult, TokenDesc};
 use super::tokens::{
     Adverbs, Articles, IntWord, Prepositions, Priority, TimeInterval, Token, When,
 };
 use chrono::prelude::*;
 
-use nom::{alt, apply, call, many_till, named_args, tuple, types::CompleteStr};
+use nom::{Parser, branch::alt, multi::many_till};
 
 define!(
     adverb:
@@ -94,41 +94,89 @@ define!(
 
 combine!(time_interval => seconds | minutes | hours | days | weeks | months | years);
 
-named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<usize>,
-                             ( TokenDesc, TokenDesc, TokenDesc, TokenDesc, TokenDesc ) )>,
-
-    many_till!(tokenize_count_symbols,
-        alt!(
+fn parse(input: &str, exact_match: bool) -> nom::IResult<&str, (Vec<usize>, [TokenDesc; 5])> {
+    many_till(
+        tokenize_count_symbols,
+        alt((
             // e.g.: in the half of year
-            tuple!(apply!(when, exact_match), apply!(article, true), apply!(adverb, exact_match),
-                   apply!(prepos, true), apply!(time_interval, exact_match)) |
+            (
+                |input| when(input, exact_match),
+                |input| article(input, true),
+                |input| adverb(input, exact_match),
+                |input| prepos(input, true),
+                |input| time_interval(input, exact_match),
+            ),
             // e.g.: in half of year
-            tuple!(apply!(when, exact_match), apply!(adverb, exact_match), apply!(prepos, true),
-                   apply!(time_interval, exact_match), stub) |
+            (
+                |input| when(input, exact_match),
+                |input| adverb(input, exact_match),
+                |input| prepos(input, true),
+                |input| time_interval(input, exact_match),
+                stub,
+            ),
             // e.g.: in a five months
-            tuple!(apply!(when, exact_match), apply!(article, true),
-                   apply!(int_word, exact_match), apply!(time_interval, exact_match), stub) |
+            (
+                |input| when(input, exact_match),
+                |input| article(input, true),
+                |input| int_word(input, exact_match),
+                |input| time_interval(input, exact_match),
+                stub,
+            ),
             // e.g.: in a 5 months
-            tuple!(apply!(when, exact_match), apply!(article, true), number,
-                   apply!(time_interval, exact_match), stub) |
+            (
+                |input| when(input, exact_match),
+                |input| article(input, true),
+                number,
+                |input| time_interval(input, exact_match),
+                stub,
+            ),
             // e.g.: in five months
-            tuple!(apply!(when, exact_match), apply!(int_word, exact_match),
-                   apply!(time_interval, exact_match), stub, stub) |
+            (
+                |input| when(input, exact_match),
+                |input| int_word(input, exact_match),
+                |input| time_interval(input, exact_match),
+                stub,
+                stub,
+            ),
             // e.g.: in 5 months
-            tuple!(apply!(when, exact_match), number, apply!(time_interval, exact_match), stub, stub) |
+            (
+                |input| when(input, exact_match),
+                number,
+                |input| time_interval(input, exact_match),
+                stub,
+                stub,
+            ),
             // e.g.: in the few days
-            tuple!(apply!(when, exact_match), apply!(article, true),
-                   apply!(adverb, exact_match), apply!(time_interval, exact_match), stub) |
+            (
+                |input| when(input, exact_match),
+                |input| article(input, true),
+                |input| adverb(input, exact_match),
+                |input| time_interval(input, exact_match),
+                stub,
+            ),
             // e.g.: in few days
-            tuple!(apply!(when, exact_match), apply!(adverb, exact_match),
-                   apply!(time_interval, exact_match), stub, stub) |
+            (
+                |input| when(input, exact_match),
+                |input| adverb(input, exact_match),
+                |input| time_interval(input, exact_match),
+                stub,
+                stub,
+            ),
             // e.g.: in a month, in a second, etc.
-            tuple!(apply!(when, exact_match), apply!(time_interval, exact_match), stub, stub, stub)
-        )
+            (
+                |input| when(input, exact_match),
+                |input| time_interval(input, exact_match),
+                stub,
+                stub,
+                stub,
+            ),
+        )),
     )
-);
+    .map(|(skipped, (t0, t1, t2, t3, t4))| (skipped, [t0, t1, t2, t3, t4]))
+    .parse(input)
+}
 
-make_interpreter!(positions = 5);
+make_interpreter!();
 
 fn make_time<'a, 'b, Tz: TimeZone>(
     res: &'a RuleResult,
@@ -216,9 +264,9 @@ mod tests {
     use crate::rules::errors::invalid_time_error;
     use chrono::prelude::*;
 
-    fn fixed_time() -> DateTime<Local> {
+    fn fixed_time() -> DateTime<Utc> {
         // 2019 1st January, Tuesday
-        Local.ymd(2019, 1, 1).and_hms(0, 0, 1)
+        Utc.with_ymd_and_hms(2019, 1, 1, 0, 0, 1).unwrap()
     }
 
     #[test]

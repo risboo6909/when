@@ -1,11 +1,11 @@
-use super::combinators::{stub, tokenize_count_symbols, Dist};
+use super::combinators::{Dist, stub, tokenize_count_symbols};
 use super::common_matchers::match_num;
 use super::consts;
-use super::errors::{invalid_time_error, SemanticError};
+use super::errors::{SemanticError, invalid_time_error};
 use super::rules::{Context, RuleResult, TokenDesc};
 use super::tokens::{Adverbs, Articles, IntWord, Priority, TimeInterval, Token};
 use chrono::prelude::*;
-use nom::{alt, apply, call, many_till, named_args, tuple, types::CompleteStr};
+use nom::{Parser, branch::alt, multi::many_till};
 
 define!(one: (Token::IntWord(IntWord::One), Priority(0)), "one", Dist(0));
 define!(two: (Token::IntWord(IntWord::Two), Priority(0)), "two", Dist(0));
@@ -51,29 +51,52 @@ combine!(time_interval => seconds | minutes | hours | days | weeks | months | ye
 
 define!(ago: (Token::Ago, Priority(2)), "ago", Dist(0));
 
-named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<usize>,
-                             ( TokenDesc, TokenDesc, TokenDesc, TokenDesc ) )>,
-    many_till!(tokenize_count_symbols,
-        alt!(
+fn parse(input: &str, exact_match: bool) -> nom::IResult<&str, (Vec<usize>, [TokenDesc; 4])> {
+    many_till(
+        tokenize_count_symbols,
+        alt((
             // half an hour ago
-            tuple!(apply!(a_few_half, exact_match), apply!(article, true), apply!(time_interval, exact_match),
-                   apply!(ago, exact_match)) |
+            (
+                |input| a_few_half(input, exact_match),
+                |input| article(input, true),
+                |input| time_interval(input, exact_match),
+                |input| ago(input, exact_match),
+            ),
             // few hours ago, a minute ago, half month ago
-            tuple!(apply!(a_few_half, exact_match), apply!(time_interval, exact_match),
-                   apply!(ago, true), stub) |
+            (
+                |input| a_few_half(input, exact_match),
+                |input| time_interval(input, exact_match),
+                |input| ago(input, true),
+                stub,
+            ),
             // two hours ago, one minute ago, five month ago
-            tuple!(apply!(int_word, exact_match), apply!(time_interval, exact_match),
-                   apply!(ago, true), stub) |
+            (
+                |input| int_word(input, exact_match),
+                |input| time_interval(input, exact_match),
+                |input| ago(input, true),
+                stub,
+            ),
             // 2 hours ago, 1 minute ago, 5 month ago
-            tuple!(number, apply!(time_interval, exact_match), apply!(ago, true), stub) |
+            (
+                number,
+                |input| time_interval(input, exact_match),
+                |input| ago(input, true),
+                stub,
+            ),
             // a month ago, an year ago
-            tuple!(apply!(a_few_half, exact_match), apply!(time_interval, exact_match),
-                   apply!(ago, true), stub)
-        )
+            (
+                |input| a_few_half(input, exact_match),
+                |input| time_interval(input, exact_match),
+                |input| ago(input, true),
+                stub,
+            ),
+        )),
     )
-);
+    .map(|(skipped, (t0, t1, t2, t3))| (skipped, [t0, t1, t2, t3]))
+    .parse(input)
+}
 
-make_interpreter!(positions = 4);
+make_interpreter!();
 
 fn make_time<'a, 'b, Tz: TimeZone>(
     res: &'a RuleResult,
@@ -173,9 +196,9 @@ mod tests {
     use crate::rules::errors::invalid_time_error;
     use chrono::prelude::*;
 
-    fn fixed_time() -> DateTime<Local> {
+    fn fixed_time() -> DateTime<Utc> {
         // 2019 1st January, Tuesday
-        Local.ymd(2019, 1, 1).and_hms(0, 0, 1)
+        Utc.with_ymd_and_hms(2019, 1, 1, 0, 0, 1).unwrap()
     }
 
     #[test]

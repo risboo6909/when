@@ -1,11 +1,11 @@
-use chrono::{offset::TimeZone, NaiveDate, NaiveDateTime, NaiveTime};
+use chrono::{NaiveDate, NaiveDateTime, NaiveTime, offset::TimeZone};
 use std::str::FromStr;
 use when;
 use when::Parser;
 
 fn fixed_time() -> NaiveDateTime {
-    let d = NaiveDate::from_ymd(2018, 8, 3);
-    let t = NaiveTime::from_hms(12, 34, 56);
+    let d = NaiveDate::from_ymd_opt(2018, 8, 3).unwrap();
+    let t = NaiveTime::from_hms_opt(12, 34, 56).unwrap();
 
     NaiveDateTime::new(d, t)
 }
@@ -114,4 +114,67 @@ fn test_various_requests() {
 
     let parser = when::parser::Parser::new(chrono_tz::Europe::Moscow);
     assert_date_time(parser, "in 1 hour", &["2018-08-03T16:34:00"], 1);
+}
+
+#[test]
+fn test_exact_and_fuzzy_modes() {
+    let fuzzy = Parser::new(chrono_tz::Europe::Moscow);
+    assert_date_time(fuzzy, "tomorow", &["2018-08-04T15:34:00"], 1);
+
+    let exact = Parser::new(chrono_tz::Europe::Moscow).fuzzy_parse(false);
+    assert!(exact.parse_fixed_time(fixed_time(), "tomorow").is_empty());
+    assert_date_time(exact, "tomorrow", &["2018-08-04T15:34:00"], 1);
+}
+
+#[test]
+fn test_dates_and_unicode_prefix() {
+    for (input, expected) in [
+        ("20/12/2010", "2010-12-20T15:34:00"),
+        ("twenty seventh of april", "2018-04-27T15:34:00"),
+        ("five minutes ago", "2018-08-03T15:29:00"),
+        ("Привет, tomorrow at 14:30", "2018-08-04T14:30:00"),
+    ] {
+        assert_date_time(
+            Parser::new(chrono_tz::Europe::Moscow),
+            input,
+            &[expected],
+            1,
+        );
+    }
+}
+
+#[test]
+fn test_unrecognized_input() {
+    let parser = Parser::new(chrono_tz::UTC).fuzzy_parse(false);
+    for input in ["", "   ", "???", "/", "-", "just some text", "こんにちは"] {
+        assert!(
+            parser.parse_fixed_time(fixed_time(), input).is_empty(),
+            "{input:?}"
+        );
+    }
+}
+
+#[test]
+fn test_invalid_time_is_standard_error() {
+    let parser = Parser::new(chrono_tz::UTC).fuzzy_parse(false);
+    let result = parser.parse_fixed_time(fixed_time(), "24:10");
+    assert_eq!(
+        result,
+        vec![Err(when::DateTimeError::InvalidTime {
+            text: "24:10".to_owned(),
+            what: "hours".to_owned(),
+            value: 24,
+        })]
+    );
+    let error: &dyn std::error::Error = result[0].as_ref().unwrap_err();
+    assert_eq!(
+        error.to_string(),
+        "invalid time in: 24:10, hours can't be 24"
+    );
+}
+
+#[test]
+fn test_explicit_language_parser() {
+    let parser = Parser::new(chrono_tz::UTC).parser(Box::new(&when::en));
+    assert_date_time(parser, "in 20 seconds", &["2018-08-03T12:35:16"], 1);
 }

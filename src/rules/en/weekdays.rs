@@ -1,11 +1,11 @@
-use super::combinators::{stub, tokenize_count_symbols, Dist};
-use super::errors::{ambiguous_time_error, SemanticError};
+use super::combinators::{Dist, stub, tokenize_count_symbols};
+use super::errors::{SemanticError, ambiguous_time_error};
 use super::rules::{Context, RuleResult, TokenDesc};
 use super::tokens::{Priority, Token, Weekday as Day, When};
+use chrono::Duration;
 use chrono::prelude::*;
-use time::Duration;
 
-use nom::{alt, apply, call, many_till, named_args, tuple, types::CompleteStr};
+use nom::{Parser, branch::alt, multi::many_till};
 
 // days of week have biggest priority
 
@@ -64,22 +64,31 @@ combine!(when => this | last | past | next);
 
 define!(week_noun: (Token::Week, Priority(2)), "week", Dist(1));
 
-named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<usize>,
-                             ( TokenDesc, TokenDesc, TokenDesc ) )>,
-    many_till!(tokenize_count_symbols,
-        alt!(
+fn parse(input: &str, exact_match: bool) -> nom::IResult<&str, (Vec<usize>, [TokenDesc; 3])> {
+    many_till(
+        tokenize_count_symbols,
+        alt((
             // day of week, when, "week", e.g. "tuesday next week"
-            tuple!(apply!(day_of_week, exact_match), apply!(when, exact_match),
-                   apply!(week_noun, exact_match)) |
+            (
+                |input| day_of_week(input, exact_match),
+                |input| when(input, exact_match),
+                |input| week_noun(input, exact_match),
+            ),
             // when and then any day of week, e.g. "last friday"
-            tuple!(apply!(when, exact_match), apply!(day_of_week, exact_match), stub) |
+            (
+                |input| when(input, exact_match),
+                |input| day_of_week(input, exact_match),
+                stub,
+            ),
             // day of week
-            tuple!(apply!(day_of_week, exact_match), stub, stub)
-        )
+            (|input| day_of_week(input, exact_match), stub, stub),
+        )),
     )
-);
+    .map(|(skipped, (t0, t1, t2))| (skipped, [t0, t1, t2]))
+    .parse(input)
+}
 
-make_interpreter!(positions = 3);
+make_interpreter!();
 
 fn make_time<'a, 'b, Tz: TimeZone>(
     res: &'a RuleResult,
@@ -92,30 +101,32 @@ fn make_time<'a, 'b, Tz: TimeZone>(
 
     let token = res.token_by_priority(Priority(0));
 
-    token.map_or((), |t| match t {
-        Token::Weekday(Day::Monday) => {
-            day = 0;
+    if let Some(t) = token {
+        match t {
+            Token::Weekday(Day::Monday) => {
+                day = 0;
+            }
+            Token::Weekday(Day::Tuesday) => {
+                day = 1;
+            }
+            Token::Weekday(Day::Wednesday) => {
+                day = 2;
+            }
+            Token::Weekday(Day::Thursday) => {
+                day = 3;
+            }
+            Token::Weekday(Day::Friday) => {
+                day = 4;
+            }
+            Token::Weekday(Day::Saturday) => {
+                day = 5;
+            }
+            Token::Weekday(Day::Sunday) => {
+                day = 6;
+            }
+            _ => (),
         }
-        Token::Weekday(Day::Tuesday) => {
-            day = 1;
-        }
-        Token::Weekday(Day::Wednesday) => {
-            day = 2;
-        }
-        Token::Weekday(Day::Thursday) => {
-            day = 3;
-        }
-        Token::Weekday(Day::Friday) => {
-            day = 4;
-        }
-        Token::Weekday(Day::Saturday) => {
-            day = 5;
-        }
-        Token::Weekday(Day::Sunday) => {
-            day = 6;
-        }
-        _ => (),
-    });
+    }
 
     let mut token = res.token_by_priority(Priority(1));
 
@@ -165,9 +176,9 @@ mod tests {
     use crate::rules::rules::MatchBounds;
     use chrono::prelude::*;
 
-    fn fixed_time() -> DateTime<Local> {
+    fn fixed_time() -> DateTime<Utc> {
         // 2019 1st January, Tuesday
-        Local.ymd(2019, 1, 1).and_hms(0, 0, 1)
+        Utc.with_ymd_and_hms(2019, 1, 1, 0, 0, 1).unwrap()
     }
 
     #[test]

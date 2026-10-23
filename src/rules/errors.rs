@@ -1,23 +1,37 @@
 use super::rules::MatchBounds;
-use failure::Fail;
-use nom::types::CompleteStr;
 use serde::Serialize;
+use std::fmt;
 
-pub(crate) const UNKNOWN: u32 = 1; // couldn't recognize token
-
-#[derive(Debug, Fail, PartialEq, Clone, Serialize)]
+#[derive(Debug, PartialEq, Clone, Serialize)]
 pub enum DateTimeError {
-    #[fail(display = "can't parse time unambiguously in: {}", msg)]
-    AmbiguousTime { msg: String },
-    #[fail(display = "invalid time in: {}, {} can't be {}", text, what, value)]
+    AmbiguousTime {
+        msg: String,
+    },
     InvalidTime {
         text: String,
         what: String,
         value: i32,
     },
-    #[fail(display = "can't parse, rules intersection detected in {}", text)]
-    IntersectionError { text: String },
+    IntersectionError {
+        text: String,
+    },
 }
+
+impl fmt::Display for DateTimeError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::AmbiguousTime { msg } => write!(f, "can't parse time unambiguously in: {msg}"),
+            Self::InvalidTime { text, what, value } => {
+                write!(f, "invalid time in: {text}, {what} can't be {value}")
+            }
+            Self::IntersectionError { text } => {
+                write!(f, "can't parse, rules intersection detected in {text}")
+            }
+        }
+    }
+}
+
+impl std::error::Error for DateTimeError {}
 
 #[derive(Debug, Clone, Serialize)]
 pub struct SemanticError<'a> {
@@ -34,8 +48,8 @@ impl<'a> SemanticError<'a> {
         self.error.clone()
     }
 
-    pub fn set_tail(&mut self, tail: CompleteStr<'a>) {
-        self.tail = *tail;
+    pub fn set_tail(&mut self, tail: &'a str) {
+        self.tail = tail;
     }
 
     pub fn get_tail(&self) -> &'a str {

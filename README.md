@@ -1,4 +1,4 @@
-# when    [![Build Status](https://travis-ci.com/risboo6909/when.svg?token=sEoRH24ki1j8CFisEvo5&branch=master)](https://travis-ci.com/risboo6909/when) [![codecov](https://codecov.io/gh/risboo6909/when/branch/master/graph/badge.svg)](https://codecov.io/gh/risboo6909/when)
+# when [![CI](https://github.com/risboo6909/when/actions/workflows/ci.yml/badge.svg)](https://github.com/risboo6909/when/actions/workflows/ci.yml)
 
 A natural language date/time parser with pluggable rules
 
@@ -21,18 +21,29 @@ As a demonstration, check out a simple HTTP web [server](https://github.com/risb
 * No regexp in rules definition. All rules are defined using rust macros.
 * Has two modes, one with typos recognition and another one which works with exact matches only.
 
+#### Requirements and development
+
+Rust 1.85 or newer (edition 2024). The library uses Nom 8, Chrono 0.4,
+chrono-tz 0.10 and strsim 0.11. See [CHANGELOG.md](CHANGELOG.md) for migration notes.
+
+```sh
+cargo build --locked
+cargo test --locked
+cargo fmt --all -- --check
+```
+
+Cargo.lock is tracked to keep development and CI builds reproducible.
+
 #### Usage
 
-```Rust
-use chrono_tz;
-use when;
+```rust
+use when::Parser;
 
 fn main() {
-    let parser = when::parser::Parser::new(chrono_tz::Europe::Moscow)
-        .parser(Box::new(when::en))
-        .max_dist(3)
+    let parser = Parser::new(chrono_tz::Europe::Moscow)
+        .max_dist(5)
         .fuzzy_parse(true);
-    println!("{:?}", parser.parse("today 18p.m."));
+    println!("{:?}", parser.parse("today at 18:00"));
 }
 ```
 
@@ -42,9 +53,9 @@ Only english language is supported yet. More languages may be added in future.
 
 When uses Nom parsing library to parse input strings.
 
-There is a *rules* folder which contains rules for various languages. Parser tries to apply all available rules for the given language one by one until the first match. Situation when several rules match the same part of the string is considered as an erroneous.
+There is a *rules* folder which contains rules for various languages. The parser applies each available rule for the selected language across the input and sorts the matches by position. Situation when several rules match the same part of the string is considered as an erroneous.
 
-The library is also able to understand typos in words using Damerau-Levenshtein distance. Distances are defined inside the rules definitions. The longer word is the bigger distance is allowed. To disable fuzzy parsing, set the last argument to parser constructor to *true*, this will switch parser to *exact match only* mode.
+The library is also able to understand typos in words using Damerau-Levenshtein distance. Distances are defined inside the rules definitions. The longer word is the bigger distance is allowed. To disable fuzzy parsing, call `.fuzzy_parse(false)` on the parser builder.
 
 Each rule has its own start and end match boundaries and a merge distance. If two matches are less than threshold away from each other then they are merged together.
 

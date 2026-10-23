@@ -1,156 +1,102 @@
 use super::rules::{FnRule, MatchBounds, MatchResult, MyResult, RuleResult, TokenDesc};
 
-use core::borrow::BorrowMut;
 use nom::{
-    self, alt, char, map, map_res, named, named_args, opt, pair, preceded, recognize, tag,
-    take_while, tuple, types::CompleteStr, ErrorKind,
+    IResult, Parser,
+    bytes::complete::take_while,
+    character::complete::{char, digit1, one_of},
+    combinator::{opt, recognize},
+    error::{Error, ErrorKind},
+    sequence::preceded,
 };
 
 use chrono::{DateTime, TimeZone};
 use strsim::damerau_levenshtein;
 
-pub use super::errors::{intersection_error, DateTimeError, SemanticError};
+pub use super::errors::{DateTimeError, SemanticError, intersection_error};
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub struct Dist(pub usize);
 
-macro_rules! set {
-    ( max_dist = $max_dist: expr, $exact_match: expr ) => {
-        if !$exact_match {
-            $max_dist
-        } else {
-            crate::rules::combinators::Dist(0)
+/// Define word tokens, choosing the first spelling within its allowed distance.
+/// Use `combine!` to choose the closest match between different tokens.
+macro_rules! define {
+    ($name:ident: ($token:expr, $priority:expr), $repr:expr, $distance:expr) => {
+        define!($name: [($token, $priority), $repr, $distance]);
+    };
+    ($name:ident: $([($token:expr, $priority:expr), $repr:expr, $distance:expr])|+) => {
+        pub fn $name(input: &str, exact_match: bool) -> crate::rules::rules::MyResult<'_> {
+            $(
+                if let Ok(result) = crate::rules::combinators::recognize_word(
+                    input,
+                    $repr,
+                    if exact_match { crate::rules::combinators::Dist(0) } else { $distance },
+                    crate::rules::tokens::PToken::PToken($token, $priority),
+                ) {
+                    return Ok(result);
+                }
+            )+
+            crate::rules::combinators::wrap_error(input)
         }
     };
-}
-
-/// Macro helps to simplify compound combinator definition, for example:
-///
-/// define!(
-///    saturday,
-///    [Tokens::Weekday(Weekday::Saturday), "saturday", 2],
-///    [Tokens::Weekday(Weekday::Saturday), "sat", 0]
-///  );
-///
-/// instead of clumsy:
-///
-/// named_args!(saturday<'a>(exact_match: bool)<CompleteStr<'a>, MatchResult<'a>>,
-///    alt!(
-///        call!(recognize_word, CompleteStr("saturday"), set!(max_dist=2, exact_match),
-///            &Weekday::Saturday) |
-///        call!(recognize_word, CompleteStr("sat"), set!(max_dist=0, exact_match),
-///            &Weekday::Saturday)
-///    )
-/// );
-///
-/// It's important to note that variants must be mutually exclusive, otherwise first (in order of
-/// declaration) match will be selected.
-///
-/// For example:
-///
-/// define!(
-///    foo_bar:
-///    [(Token::Foo(Foo), Priority(0)), "foo", Dist(3)] |
-///    [(Token::Bar(Bar), Priority(0)), "bar", Dist(3)]
-/// );
-///
-/// passing string "bar" to foo_bar! combinator will lead to "Foo" token recognition, because
-/// there is 3 units editing distance between strings "foo" and "bar" and therefor first match will
-/// be chosen, which is "Foo".
-///
-/// Use "combine!" combinator if you want to choose the best fit word among the list.
-macro_rules! define {
-    ( $func_name: ident: ($token: expr, $p: expr), $repr: expr, $max_dist: expr ) => (
-        named_args!(pub $func_name<'a>(exact_match: bool)<CompleteStr<'a>, TokenDesc>,
-            call!(crate::rules::combinators::recognize_word, CompleteStr($repr), set!(max_dist=$max_dist,
-                  exact_match), crate::rules::tokens::PToken::PToken($token, $p))
-        );
-    );
-    ( $func_name: ident: $([($token: expr, $p: expr), $repr: expr, $max_dist: expr])|* ) => (
-        named_args!(pub $func_name<'a>(exact_match: bool)<CompleteStr<'a>, TokenDesc>,
-            alt!(
-                $(call!(crate::rules::combinators::recognize_word, CompleteStr($repr), set!(max_dist=$max_dist,
-                        exact_match), crate::rules::tokens::PToken::PToken($token, $p))) |*
-            )
-        );
-    );
 }
 
 macro_rules! define_char {
-    ( $func_name: ident: $p: expr, $repr: expr ) => {
-        fn $func_name(input: CompleteStr) -> crate::rules::rules::MyResult {
-            if let Ok((tail, _)) = crate::rules::combinators::recognize_symbol(input, $repr) {
-                return Ok((
-                    tail,
-                    TokenDesc::new(
-                        crate::rules::tokens::PToken::PToken(Token::Char, $p),
-                        crate::rules::combinators::Dist(0),
-                    ),
-                ));
-            }
-            crate::rules::combinators::wrap_error(input, crate::rules::errors::UNKNOWN)
+    ($name:ident: $priority:expr, $repr:expr) => {
+        fn $name(input: &str) -> crate::rules::rules::MyResult<'_> {
+            let (tail, _) = crate::rules::combinators::recognize_symbol(input, $repr)?;
+            Ok((
+                tail,
+                TokenDesc::new(
+                    crate::rules::tokens::PToken::PToken(Token::Char, $priority),
+                    crate::rules::combinators::Dist(0),
+                ),
+            ))
         }
     };
 }
 
-/// Macro simplifies bounded number parsers definition.
-///
-/// Example:
-///
-/// define_num!(hour, (Token::Hour, 0));
-///
 macro_rules! define_num {
-    ( $func_name: ident: ($ctor: expr, $p: expr) ) => {
-        fn $func_name(input: CompleteStr) -> crate::rules::rules::MyResult {
-            if let Ok((tail, n)) = crate::rules::combinators::recognize_int(input) {
-                return Ok((
-                    tail,
-                    TokenDesc::new(
-                        crate::rules::tokens::PToken::PToken($ctor(n as i32), $p),
-                        crate::rules::combinators::Dist(0),
-                    ),
-                ));
-            }
-            crate::rules::combinators::wrap_error(input, crate::rules::errors::UNKNOWN)
+    ($name:ident: ($ctor:expr, $priority:expr)) => {
+        fn $name(input: &str) -> crate::rules::rules::MyResult<'_> {
+            let (tail, value) = crate::rules::combinators::recognize_int(input)?;
+            Ok((
+                tail,
+                TokenDesc::new(
+                    crate::rules::tokens::PToken::PToken($ctor(value), $priority),
+                    crate::rules::combinators::Dist(0),
+                ),
+            ))
         }
     };
 }
 
-/// Macro helps to combine tokens defined by define! macro into one, i.e.
-///
-/// combine!(day_of_week => monday | tuesday | wednesday | thursday | friday | saturday | sunday);
-///
-/// Defines "day_of_week" combinator which looks for the best match among the given variants.
-///
-/// Match considered as the best one if its Levenshtein distance is minimal compared to others.
+/// Choose a unique token with the smallest editing distance.
 macro_rules! combine {
-    ( $func_name: ident => $($f: ident) |* ) => (
-        named_args!(pub $func_name<'a>(exact_match: bool)<CompleteStr<'a>, TokenDesc>,
-            call!(crate::rules::combinators::best_fit, exact_match, vec![$(&$f),*])
-        );
-    );
+    ($name:ident => $($parser:ident)|+) => {
+        pub fn $name(input: &str, exact_match: bool) -> crate::rules::rules::MyResult<'_> {
+            crate::rules::combinators::best_fit(input, exact_match, &[$($parser),+])
+        }
+    };
 }
 
-/// TODO: add comment
+/// Convert the matched token array into a context and retain byte offsets.
 macro_rules! make_interpreter {
-    ( positions = $n: expr ) => {
-        use tuple::TupleElements;
-
+    () => {
         pub(crate) fn interpret<Tz: TimeZone>(
             input: &str,
             exact_match: bool,
             tz: DateTime<Tz>,
-        ) -> Result<RuleResult, crate::rules::errors::SemanticError> {
+        ) -> Result<RuleResult<'_>, crate::rules::errors::SemanticError<'_>> {
             let mut res = RuleResult::new();
-            match parse(CompleteStr(input), exact_match) {
-                Ok((tail, (skipped, tt))) => {
+            match parse(input, exact_match) {
+                Ok((tail, (skipped, tokens))) => {
                     let bounds =
                         crate::rules::combinators::match_bounds(skipped.iter().sum(), input, tail);
                     res.set_bounds(Some(bounds));
-                    for idx in 0..$n {
-                        res.set_token(tt.get(idx).unwrap());
+                    for token in &tokens {
+                        res.set_token(token);
                     }
-                    res.set_tail(*tail);
+                    res.set_tail(tail);
                     match make_time(&res, tz, &input[bounds.start_idx..bounds.end_idx]) {
                         Ok(ctx) => res.set_context(ctx),
                         Err(mut err) => {
@@ -160,12 +106,9 @@ macro_rules! make_interpreter {
                         }
                     }
                 }
-                Err(nom::Err::Error(nom::Context::Code(ref input, nom::ErrorKind::ManyTill))) => {
-                    res.set_tail(input);
-                }
-                _ => unreachable!(),
+                Err(nom::Err::Error(error)) => res.set_tail(error.input),
+                _ => unreachable!("complete rule parsers only return recoverable errors"),
             }
-
             Ok(res)
         }
     };
@@ -175,134 +118,80 @@ fn is_ignorable(c: char) -> bool {
     !(c == '/' || c == ':' || c == '-' || c.is_alphanumeric())
 }
 
-/// Trim spaces, special symbols and commas until any non-whitespace character appears
-named!(trim<CompleteStr, CompleteStr>,
-    take_while!(is_ignorable)
-);
+/// Skip whitespace and punctuation before a token.
+fn trim(input: &str) -> IResult<&str, &str> {
+    take_while(is_ignorable).parse(input)
+}
 
 fn is_word_symbol(c: char) -> bool {
     c == '.' || c == ':' || c.is_alphanumeric()
 }
 
-/// Ignores whitespaces using "trim" and then consumes alphabetical characters in a string until
-/// any non alpha-numeric character appears or the string has been exhausted:
-///
-/// "  , abracadabra  " -> "abracadabra"
-named!(tokenize_word<CompleteStr, CompleteStr>,
-    preceded!(trim, take_while!(is_word_symbol))
-);
-
-/// Consumes all spaces before a word, the word itself and all spaces after the word and returns
-/// total number of consumed characters:
-///
-/// "  , abracadabra  " -> 17
-named!(pub(crate) tokenize_count_symbols<CompleteStr, usize>,
-    map!(tuple!(trim, take_while!(|c: char| c == '.' || c == ':' || c.is_alphanumeric()), trim),
-    |(prefix, word, suffix)| {
-        prefix.len() + word.len() + suffix.len()
-    })
-);
-
-/// Ignores whitespaces using "trim" and then consumes digits in a string until
-/// any non digit character appears or the string has been exhausted, and in case of success
-/// converts the number from the string representation into i32:
-///
-/// "  , -321  " -> -321
-named!(pub(crate) recognize_int<CompleteStr, i32>,
-    map!(
-        preceded!(trim, pair!(
-            opt!(alt!(tag!("+") | tag!("-"))),
-            map_res!(recognize!(nom::digit), |s: CompleteStr| s.parse::<i32>()))
-            ),
-        |(sign, value): (Option<nom::types::CompleteStr<'_>>, i32)| {
-        sign.and_then(|s| if s == CompleteStr("-") { Some(-1) } else { None }).unwrap_or(1) * value
-     })
-);
-
-named_args!(pub recognize_symbol<'a>(c: char)<CompleteStr<'a>, char>,
-    preceded!(trim, char!(c))
-);
-
-/// Stub combinator should be used in situations when there are several alternatives
-/// are considered but they are differ in length, example:
-///
-/// named_args!(parse<'a>(exact_match: bool)<CompleteStr<'a>, (Vec<CompleteStr<'a>>,
-///                             ( TokenDesc, TokenDesc, TokenDesc ) )>,
-///     many_till!(take!(1),
-///        alt!(
-///            // day of week, when, "week", e.g. "tuesday next week"
-///            tuple!(apply!(day_of_week, exact_match), apply!(when, exact_match),
-///                   apply!(week_noun, exact_match)) |
-///            // when and then any day of week, e.g. "last friday"
-///            tuple!(apply!(when, exact_match), apply!(day_of_week, exact_match), call!(stub))
-///        )
-///    )
-///
-/// );
-///
-/// Note that the first variant expects 3 tokens to match with and the second one expects only
-/// 2 tokens, function result type is a tuple with three elements, so tuple sizes of both match
-/// arms must be the same size.
-pub(crate) fn stub(input: CompleteStr) -> MyResult {
-    Ok((
-        input,
-        TokenDesc::new(
-            crate::rules::tokens::PToken::Stub,
-            crate::rules::combinators::Dist(0),
-        ),
-    ))
+fn tokenize_word(input: &str) -> IResult<&str, &str> {
+    preceded(trim, take_while(is_word_symbol)).parse(input)
 }
 
-#[inline]
-pub(crate) fn wrap_error(input: CompleteStr, error_code: u32) -> MyResult {
-    Err(nom::Err::Error(nom::simple_errors::Context::Code(
-        input,
-        ErrorKind::Custom(error_code),
-    )))
+/// Consume a word with surrounding punctuation and count the consumed bytes.
+pub(crate) fn tokenize_count_symbols(input: &str) -> IResult<&str, usize> {
+    (trim, take_while(is_word_symbol), trim)
+        .map(|(prefix, word, suffix): (&str, &str, &str)| prefix.len() + word.len() + suffix.len())
+        .parse(input)
 }
 
-/// Tries to recognize a word using Domerau-Levenshtein algorithm, it is both simple enough and
-/// efficient.
+pub(crate) fn recognize_int(input: &str) -> IResult<&str, i32> {
+    preceded(trim, recognize((opt(one_of("+-")), digit1)))
+        .map_res(str::parse::<i32>)
+        .parse(input)
+}
+
+pub fn recognize_symbol(input: &str, c: char) -> IResult<&str, char> {
+    preceded(trim, char(c)).parse(input)
+}
+
+/// Pad shorter alternatives to the same token array length.
+pub(crate) fn stub(input: &str) -> MyResult<'_> {
+    Ok((input, TokenDesc::new(super::tokens::PToken::Stub, Dist(0))))
+}
+
+pub(crate) fn wrap_error(input: &str) -> MyResult<'_> {
+    Err(nom::Err::Error(Error::new(input, ErrorKind::Tag)))
+}
+
 pub(crate) fn recognize_word<'a>(
-    input: CompleteStr<'a>,
-    pattern: CompleteStr<'a>,
-    max_dist: crate::rules::combinators::Dist,
+    input: &'a str,
+    pattern: &str,
+    max_dist: Dist,
     token: super::tokens::PToken,
 ) -> MyResult<'a> {
-    if let Ok((tail, mut word)) = tokenize_word(input) {
-        // TODO: add comment why we replace "." with "" (examples a.m., p.m.)
-        let normalized_word = word.borrow_mut().replace(".", "");
-        if max_dist == crate::rules::combinators::Dist(0) {
-            // when max_dist is 0 perform just plain string comparison
-            if normalized_word == *pattern {
-                return Ok((
-                    tail,
-                    TokenDesc::new(token, crate::rules::combinators::Dist(0)),
-                ));
+    if let Ok((tail, word)) = tokenize_word(input) {
+        // Ignore periods in spellings such as a.m. and p.m.
+        let normalized_word = word.replace('.', "");
+        let dist = if max_dist == Dist(0) {
+            if normalized_word != pattern {
+                return wrap_error(input);
             }
+            Dist(0)
         } else {
-            let dist = Dist(damerau_levenshtein(&normalized_word, *pattern));
-            if dist <= max_dist {
-                return Ok((tail, TokenDesc::new(token, dist)));
-            }
+            Dist(damerau_levenshtein(&normalized_word, pattern))
+        };
+        if dist <= max_dist {
+            return Ok((tail, TokenDesc::new(token, dist)));
         }
     }
-
-    wrap_error(input, crate::rules::errors::UNKNOWN)
+    wrap_error(input)
 }
 
-/// Finds a minimal distance between an input word by applying all combinators from funcs.
-/// Each function accepts an input string and a flag which denotes whether exact match is required.
-pub(crate) fn best_fit<'a>(
-    input: CompleteStr<'a>,
-    exact_match: bool,
-    combinators: Vec<&dyn Fn(CompleteStr<'a>, bool) -> MyResult<'a>>,
-) -> MyResult<'a> {
-    let mut min_dist = Dist(std::usize::MAX);
+type WordParser = for<'a> fn(&'a str, bool) -> MyResult<'a>;
 
-    let mut selected_token = crate::rules::tokens::PToken::Stub;
+pub(crate) fn best_fit<'a>(
+    input: &'a str,
+    exact_match: bool,
+    combinators: &[WordParser],
+) -> MyResult<'a> {
+    let mut min_dist = Dist(usize::MAX);
+    let mut selected_token = super::tokens::PToken::Stub;
     let mut selected_count = 0;
-    let mut selected_tail = CompleteStr("");
+    let mut selected_tail = "";
 
     for comb in combinators {
         if let Ok((tail, TokenDesc { token, dist })) = comb(input, exact_match) {
@@ -316,12 +205,10 @@ pub(crate) fn best_fit<'a>(
             }
         }
     }
-
     if selected_count == 1 {
         return Ok((selected_tail, TokenDesc::new(selected_token, min_dist)));
     }
-
-    wrap_error(input, crate::rules::errors::UNKNOWN)
+    wrap_error(input)
 }
 
 pub(crate) fn remove_overlapped<'a>(
@@ -477,7 +364,7 @@ pub(crate) fn apply_generic<'a, Tz: TimeZone + 'a>(
 pub(crate) fn match_bounds(
     prefix_len: usize,
     input: &str,
-    tail: CompleteStr,
+    tail: &str,
 ) -> crate::rules::rules::MatchBounds {
     crate::rules::rules::MatchBounds::new(prefix_len, input.len() - tail.len())
 }

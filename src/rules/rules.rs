@@ -1,5 +1,5 @@
 use chrono::prelude::DateTime;
-use nom::{types::CompleteStr, IResult};
+use nom::IResult;
 use serde::Serialize;
 use std::convert::From;
 
@@ -7,7 +7,7 @@ use super::combinators::Dist;
 use super::errors::SemanticError;
 use super::tokens::{PToken, Priority, Token};
 
-pub type MyResult<'a> = IResult<CompleteStr<'a>, TokenDesc>;
+pub type MyResult<'a> = IResult<&'a str, TokenDesc>;
 
 #[derive(Debug, Clone)]
 pub struct TokenDesc {
@@ -39,7 +39,7 @@ impl MatchBounds {
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub struct Context {
     // relative value
-    pub duration: time::Duration,
+    pub duration: chrono::Duration,
 
     // absolute values
     pub year: Option<i32>,
@@ -54,7 +54,7 @@ impl Context {
     where
         i64: From<T>,
     {
-        self.duration = time::Duration::seconds(i64::from(duration));
+        self.duration = chrono::Duration::seconds(i64::from(duration));
     }
 
     pub fn update(&mut self, other: &Self) {
@@ -80,7 +80,7 @@ impl Context {
 impl Default for Context {
     fn default() -> Self {
         Context {
-            duration: time::Duration::zero(),
+            duration: chrono::Duration::zero(),
             year: None,
             month: None,
             day: None,

@@ -12,7 +12,7 @@ use crate::rules::consts;
 use crate::rules::errors;
 use crate::rules::rules;
 use crate::rules::tokens;
-use chrono::{offset::TimeZone, DateTime};
+use chrono::{DateTime, offset::TimeZone};
 
 pub fn parse<'a, Tz: TimeZone + 'a>(
     tz_aware: DateTime<Tz>,

@@ -1,0 +1,18 @@
+# Changelog
+
+## 0.2.0 (unreleased)
+
+- Move to Rust edition 2024, requiring Rust 1.85 or newer.
+- Migrate from Nom 4 macros and `CompleteStr` to Nom 8 function combinators and `&str`.
+- Update Chrono, chrono-tz and strsim; use `chrono::Duration` for relative time.
+- Remove the time, failure, tuple and unused num-traits direct dependencies.
+- Implement `std::error::Error` for `DateTimeError`, preserving its variants and messages.
+- Replace deprecated Chrono constructors in tests and use UTC fixtures.
+- Track Cargo.lock for reproducible development builds and CI.
+- Replace Travis CI with GitHub Actions checks for Rust 1.85, stable Rust and formatting.
+
+### Migration
+
+Applications should update their chrono-tz dependency to 0.10. `Parser` usage remains
+the same. `DateTimeError` now implements the standard error trait instead of deriving
+`failure::Fail`; error variants and serialized fields are unchanged.
