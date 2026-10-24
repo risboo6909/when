@@ -9,3 +9,4 @@ pub(crate) mod tokens;
 
 pub(crate) mod common;
 pub(crate) mod en;
+pub(crate) mod ru;

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Add an explicitly selected Russian parser (`when::ru`) with inflected dates and weekdays, clock times, relative intervals, number words, typo recognition and UTF-8 match offsets.
 - Recognize hours without minutes after `at`, such as `tomorrow at 17`, while giving structured dates, times and durations priority.
 
 ## 0.2.0 (2026-10-23)

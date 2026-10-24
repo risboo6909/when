@@ -20,7 +20,7 @@ As a demonstration, check out a simple HTTP web [server](https://github.com/risb
 
 #### Key features
 
-* No regexp in rules definition. All rules are defined using rust macros.
+* No regular expressions in language rules.
 * Has two modes, one with typos recognition and another one which works with exact matches only.
 
 #### Requirements and development
@@ -49,13 +49,60 @@ fn main() {
 }
 ```
 
-Only english language is supported yet. More languages may be added in future.
+English is the default language. Select the Russian parser with `when::ru`:
+
+```rust
+use when::Parser;
+
+let parser = Parser::new(chrono_tz::Europe::Moscow)
+    .parser(Box::new(&when::ru));
+println!("{:?}", parser.parse("завтра в 17"));
+```
+
+#### Russian expressions
+
+| Kind | Examples |
+| --- | --- |
+| Relative dates | `сегодня`, `вчера`, `завтра`, `послезавтра`, `позавчера` |
+| Clock times | `в 17`, `17:30`, `в семнадцать`, `в пять вечера`, `в 12 ночи` |
+| Times of day | `завтра утром`, `сегодня днём`, `вечером`, `в полдень`, `в полночь` |
+| Weekdays | `в понедельник`, `во вторник`, `в следующую пятницу`, `в прошлый четверг` |
+| Calendar dates | `5 мая`, `первого января`, `31 декабря 2026 года`, `1 янв. 2026 г.` |
+| Numeric dates | `20.12.2026`, `20/12/2026`, `20-12-2026`, `2026-12-20`, `20.12` |
+| Intervals | `через два часа`, `три дня назад`, `через 2 часа 30 минут`, `через год и два месяца` |
+| Half-units | `через полчаса`, `через полтора часа`, `через полторы минуты`, `через полгода` |
+
+The parser accepts common inflections and cardinal numbers written as words;
+ordinal day names are also supported. Matching is case-insensitive, and `ё` and `е`
+are equivalent, including in exact mode. `.fuzzy_parse(false)` disables typo
+recognition; short keywords and number words require exact spellings in both modes.
+Unqualified times of day use 08:00 for `утром`, 15:00 for `днём`, 18:00 for
+`вечером`, and 23:00 for `ночью`.
+
+Dates without a year use the reference's local year. Explicit years require at
+least four digits. An unqualified weekday is its next occurrence, including today;
+`следующий` selects a strictly future occurrence and `прошлый` a strictly past one.
+`в эту среду` refers to the current week and returns an ambiguity error when that
+day has already passed.
+
+`завтра` advances the local calendar date, while `через 24 часа` adds elapsed time.
+Months and years are calendar intervals and preserve the day of the month;
+an impossible result, such as January 31 plus one month, returns an error.
+Nonexistent or ambiguous local clock times at timezone transitions also return errors.
+Omitted seconds and fractional seconds follow the same precision rules as English.
+
+The shared merge distance is measured in bytes. To extract separate dates joined
+by `и`, use `.max_dist(3)`, for example with `завтра в 17 и послезавтра в 18`.
 
 #### How it works?
 
-When uses Nom parsing library to parse input strings.
+English rules use Nom combinators. Russian rules tokenize the original UTF-8
+input and produce the same date/time contexts for the shared merge and timezone logic.
 
-There is a *rules* folder which contains rules for various languages. The parser applies each available rule for the selected language across the input and sorts the matches by position. Situation when several rules match the same part of the string is considered as an erroneous.
+Language rules live in `src/rules`. English rules are applied independently;
+overlapping matches produce an intersection error. Russian rules consume complete
+expressions before their individual words and numbers. Both parsers return byte
+offsets for the shared date/time merge logic.
 
 The library is also able to understand typos in words using Damerau-Levenshtein distance. Distances are defined inside the rules definitions. The longer word is the bigger distance is allowed. To disable fuzzy parsing, call `.fuzzy_parse(false)` on the parser builder.
 
