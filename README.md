@@ -8,13 +8,9 @@ Check out how it works interactively at https://risboo6909.org/when/ or at https
 
 #### Examples
 
-* **tonight at 11:10 pm**
-* at **Friday afternoon**
-* the deadline is **next tuesday 14:00**
-* drop me a line **next wednesday at 2:25 p.m**
-* it could be done at **11 am past tuesday**
-* **20** (standalone hour, interpreted as 20:00 on the reference date)
-* **tomorrow at 17** (interpreted as tomorrow at 17:00)
+See the [English](#english-expressions) and [Russian](#russian-expressions) tables
+below for supported expressions. The parser also finds dates and times inside
+longer text, such as `drop me a line next wednesday at 2:25 p.m`.
 
 As a demonstration, check out a simple HTTP web [server](https://github.com/risboo6909/when-http) which parses natural language date/time using this library.
 
@@ -58,6 +54,23 @@ let parser = Parser::new(chrono_tz::Europe::Moscow)
     .parser(Box::new(&when::ru));
 println!("{:?}", parser.parse("завтра в 17"));
 ```
+
+#### English expressions
+
+| Kind | Examples |
+| --- | --- |
+| Relative dates | `today`, `yesterday`, `tomorrow`, `now` |
+| Clock times | `20`, `at 17`, `17:30`, `5pm`, `12 am`, `tomorrow at 17` |
+| Times of day | `tomorrow morning`, `next Friday afternoon`, `this evening`, `tonight`, `noon` |
+| Weekdays | `next monday`, `last friday`, `this sunday`, `next wednesday` |
+| Calendar dates | `5 may`, `May 5th`, `first of January`, `twenty seventh of April` |
+| Numeric dates | `20/12/2026`, `20/12` |
+| Intervals | `in two hours`, `three days ago`, `in 20 seconds`, `within 5 minutes` |
+| Half-units | `half an hour ago`, `half a day ago`, `in half of year` |
+
+English numeric dates use day/month/year order with `/` separators. Month-name
+dates use the reference's year. Standalone hours such as `20`
+mean 20:00; `tomorrow at 17` means tomorrow at 17:00.
 
 #### Russian expressions
 
