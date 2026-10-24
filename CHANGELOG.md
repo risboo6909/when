@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Recognize hours without minutes after `at`, such as `tomorrow at 17`, while giving structured dates, times and durations priority.
+
 ## 0.2.0 (2026-10-23)
 
 - Move to Rust edition 2024, requiring Rust 1.85 or newer.

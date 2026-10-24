@@ -403,7 +403,6 @@ fn test_hour_only_fallback_keeps_structured_rules() {
         "15.0",
         "15x",
         "20 people",
-        "call me at 20",
         "２０",
         "2147483648",
     ] {
@@ -412,4 +411,94 @@ fn test_hour_only_fallback_keeps_structured_rules() {
             "{input:?}"
         );
     }
+}
+
+#[test]
+fn test_hour_without_minutes_after_at() {
+    for fuzzy in [false, true] {
+        for (input, expected) in [
+            ("tomorrow at 17", "2018-08-04T17:00:00"),
+            ("tomorrow at 17:00", "2018-08-04T17:00:00"),
+            ("tomorrow at 0", "2018-08-04T00:00:00"),
+            ("today at 23", "2018-08-03T23:00:00"),
+            ("next monday at 7", "2018-08-06T07:00:00"),
+            ("call me at 20", "2018-08-03T20:00:00"),
+            ("at 15", "2018-08-03T15:00:00"),
+            ("Привет, tomorrow at 17", "2018-08-04T17:00:00"),
+        ] {
+            assert_date_time(
+                Parser::new(chrono_tz::UTC).fuzzy_parse(fuzzy),
+                input,
+                &[expected],
+                1,
+            );
+        }
+    }
+}
+
+#[test]
+fn test_at_hour_keeps_structured_rules_and_errors() {
+    for (input, expected) in [
+        ("tomorrow at 5pm", "2018-08-04T17:00:00"),
+        ("tomorrow at 12 am", "2018-08-04T00:00:00"),
+        ("at 20:30", "2018-08-03T20:30:00"),
+        ("at 17-30", "2018-08-03T17:30:00"),
+        ("at 20 december", "2018-12-20T12:34:00"),
+        ("at 20/12/2010", "2010-12-20T12:34:00"),
+        ("at 20 seconds ago", "2018-08-03T12:34:36"),
+        ("at in 20 seconds", "2018-08-03T12:35:16"),
+    ] {
+        assert_date_time(Parser::new(chrono_tz::UTC), input, &[expected], 1);
+    }
+    let parser = Parser::new(chrono_tz::UTC);
+    for (input, what, value) in [
+        ("tomorrow at 24", "hours", 24),
+        ("at -1", "hours", -1),
+        ("tomorrow at 17:60", "minutes", 60),
+        ("at 31 february", "day", 31),
+    ] {
+        let results = parser.parse_fixed_time(fixed_time(), input);
+        assert_eq!(results.len(), 1, "{input}: {results:?}");
+        assert!(
+            matches!(&results[0], Err(when::DateTimeError::InvalidTime { what: actual_what, value: actual_value, .. }) if actual_what == what && *actual_value == value),
+            "{input}: {results:?}"
+        );
+    }
+}
+
+#[test]
+fn test_at_hour_requires_whole_number() {
+    let parser = Parser::new(chrono_tz::UTC).fuzzy_parse(false);
+    for input in [
+        "at 17people",
+        "at 15.5",
+        "at 15/",
+        "at 15:",
+        "at 15-",
+        "at １５",
+        "format 17",
+        "at17",
+    ] {
+        assert!(
+            parser.parse_fixed_time(fixed_time(), input).is_empty(),
+            "{input:?}"
+        );
+    }
+}
+
+#[test]
+fn test_multiple_at_hours_keep_offsets_after_error() {
+    let parser = Parser::new(chrono_tz::UTC).max_dist(3);
+    let results = parser.parse_fixed_time(fixed_time(), "at 24; and tomorrow at 20");
+    assert_eq!(results.len(), 2, "{results:?}");
+    assert!(matches!(
+        results[0],
+        Err(when::DateTimeError::InvalidTime { value: 24, .. })
+    ));
+    assert_eq!(
+        results[1],
+        Ok(chrono_tz::UTC
+            .with_ymd_and_hms(2018, 8, 4, 20, 0, 0)
+            .unwrap())
+    );
 }

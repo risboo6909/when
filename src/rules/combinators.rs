@@ -82,13 +82,16 @@ macro_rules! combine {
 /// Convert the matched token array into a context and retain byte offsets.
 macro_rules! make_interpreter {
     () => {
-        pub(crate) fn interpret<Tz: TimeZone>(
+        make_interpreter!(interpret, parse);
+    };
+    ($interpreter:ident, $parser:ident) => {
+        pub(crate) fn $interpreter<Tz: TimeZone>(
             input: &str,
             exact_match: bool,
             tz: DateTime<Tz>,
         ) -> Result<RuleResult<'_>, crate::rules::errors::SemanticError<'_>> {
             let mut res = RuleResult::new();
-            match parse(input, exact_match) {
+            match $parser(input, exact_match) {
                 Ok((tail, (skipped, tokens))) => {
                     let bounds =
                         crate::rules::combinators::match_bounds(skipped.iter().sum(), input, tail);
@@ -284,12 +287,18 @@ pub(crate) fn apply_generic<'a, Tz: TimeZone + 'a>(
     date_time: DateTime<Tz>,
     source_str: &'a str,
     rules: &'a [FnRule<Tz>],
+    fallback_rules: &'a [FnRule<Tz>],
     exact_match: bool,
 ) -> Vec<Result<MatchResult, DateTimeError>> {
     // empty vector of matched tokens and errors
     let mut matched_tokens = Vec::new();
 
-    for rule in rules {
+    // Explicit structured matches reserve their spans before fallback rules run.
+    for (rule, fallback) in rules
+        .iter()
+        .map(|rule| (rule, false))
+        .chain(fallback_rules.iter().map(|rule| (rule, true)))
+    {
         let mut input = source_str;
         let mut end_of_last_match_idx = 0;
 
@@ -303,14 +312,20 @@ pub(crate) fn apply_generic<'a, Tz: TimeZone + 'a>(
                     ..
                 }) => {
                     // applied rule had a match
-                    matched_tokens.push(Ok(MatchResult::new(
-                        context,
+                    let bounds = MatchBounds::new(
                         end_of_last_match_idx + bounds.start_idx,
                         end_of_last_match_idx + bounds.end_idx,
-                    )));
+                    );
+                    if !fallback || !overlaps_existing(&matched_tokens, bounds) {
+                        matched_tokens.push(Ok(MatchResult::new(
+                            context,
+                            bounds.start_idx,
+                            bounds.end_idx,
+                        )));
+                    }
 
                     // continue with the rest of the string
-                    end_of_last_match_idx += bounds.end_idx;
+                    end_of_last_match_idx = bounds.end_idx;
                     input = tail;
                 }
                 Ok(RuleResult { bounds: None, .. }) => {
@@ -318,9 +333,17 @@ pub(crate) fn apply_generic<'a, Tz: TimeZone + 'a>(
                     // current rule as fully applied and must continue with the next rule
                     break;
                 }
-                Err(err) => {
+                Err(mut err) => {
+                    let bounds = MatchBounds::new(
+                        end_of_last_match_idx + err.get_start_idx(),
+                        end_of_last_match_idx + err.get_end_idx(),
+                    );
                     input = err.get_tail();
-                    matched_tokens.push(Err(err));
+                    end_of_last_match_idx = bounds.end_idx;
+                    err.set_bounds(bounds);
+                    if !fallback || !overlaps_existing(&matched_tokens, bounds) {
+                        matched_tokens.push(Err(err));
+                    }
                 }
             }
         }
@@ -344,6 +367,19 @@ pub(crate) fn apply_generic<'a, Tz: TimeZone + 'a>(
             Ok(x) => Ok(*x),
         })
         .collect()
+}
+
+fn overlaps_existing(
+    matches: &[Result<MatchResult, SemanticError<'_>>],
+    bounds: MatchBounds,
+) -> bool {
+    matches.iter().any(|item| {
+        let (start, end) = match item {
+            Ok(item) => (item.get_start_idx(), item.get_end_idx()),
+            Err(item) => (item.get_start_idx(), item.get_end_idx()),
+        };
+        start < bounds.end_idx && bounds.start_idx < end
+    })
 }
 
 /// Returns start and end indices of a match, accepts following arguments:

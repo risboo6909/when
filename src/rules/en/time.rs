@@ -1,6 +1,6 @@
 use super::combinators::{Dist, stub, tokenize_count_symbols};
 use super::errors::{DateTimeError, SemanticError, invalid_time_error};
-use super::rules::{Context, MatchResult, RuleResult, TokenDesc};
+use super::rules::{Context, MatchResult, MyResult, RuleResult, TokenDesc};
 use super::tokens::{AmPm, Priority, Token};
 use chrono::prelude::*;
 use nom::{Parser, branch::alt, multi::many_till};
@@ -33,6 +33,39 @@ define!(
 );
 
 combine!(am_pm => am | pm);
+
+define!(at: (Token::Char, Priority(1)), "at", Dist(0));
+
+fn whole_hours(input: &str) -> MyResult<'_> {
+    let (tail, token) = hours(input)?;
+    // Keep identifiers, dates, decimal values and incomplete clock forms intact.
+    if tail
+        .chars()
+        .next()
+        .is_some_and(|c| c.is_alphanumeric() || matches!(c, '_' | ':' | '/' | '-' | '+'))
+        || tail
+            .strip_prefix('.')
+            .and_then(|rest| rest.chars().next())
+            .is_some_and(char::is_numeric)
+    {
+        return super::combinators::wrap_error(input);
+    }
+    Ok((tail, token))
+}
+
+fn parse_at_hour(
+    input: &str,
+    _exact_match: bool,
+) -> nom::IResult<&str, (Vec<usize>, [TokenDesc; 4])> {
+    many_till(
+        tokenize_count_symbols,
+        (|input| at(input, true), whole_hours, stub, stub),
+    )
+    .map(|(skipped, (t0, t1, t2, t3))| (skipped, [t0, t1, t2, t3]))
+    .parse(input)
+}
+
+make_interpreter!(interpret_at_hour, parse_at_hour);
 
 fn parse(input: &str, exact_match: bool) -> nom::IResult<&str, (Vec<usize>, [TokenDesc; 4])> {
     many_till(

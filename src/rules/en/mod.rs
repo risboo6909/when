@@ -32,6 +32,7 @@ pub fn parse<'a, Tz: TimeZone + 'a>(
             casual_date_time::interpret::<Tz>,
             common::slash_dmy::interpret::<Tz>,
         ],
+        &[time::interpret_at_hour::<Tz>],
         exact_match,
     );
     if matches.is_empty() {
